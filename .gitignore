@@ -1,0 +1,15 @@
+syntax: glob
+
+**/.idea/*
+!/.idea/vcs.xml
+!/.idea/copyright
+!/.idea/codeStyles
+*.iml
+
+.gradle
+.kotlin
+classes
+build/
+*.log
+/local.properties
+/site
