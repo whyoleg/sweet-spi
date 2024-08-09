@@ -1,0 +1,21 @@
+public abstract interface annotation class dev/whyoleg/sweetspi/Service : java/lang/annotation/Annotation {
+}
+
+public final class dev/whyoleg/sweetspi/ServiceLoader {
+	public static final field INSTANCE Ldev/whyoleg/sweetspi/ServiceLoader;
+	public static final fun load (Lkotlin/reflect/KClass;)Ljava/util/List;
+}
+
+public abstract interface annotation class dev/whyoleg/sweetspi/ServiceProvider : java/lang/annotation/Annotation {
+	public abstract fun services ()[Ljava/lang/Class;
+}
+
+public abstract interface class dev/whyoleg/sweetspi/internal/InternalServiceModule {
+	public abstract fun getRequiredServices ()Ljava/util/Set;
+	public abstract fun getServices ()Ljava/util/Set;
+	public abstract fun providers (Lkotlin/reflect/KClass;)Ljava/util/List;
+}
+
+public abstract interface annotation class dev/whyoleg/sweetspi/internal/InternalSweetSpiApi : java/lang/annotation/Annotation {
+}
+

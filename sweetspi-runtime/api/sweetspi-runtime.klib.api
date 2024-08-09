@@ -1,0 +1,47 @@
+// Klib ABI Dump
+// Targets: [androidNativeArm32, androidNativeArm64, androidNativeX64, androidNativeX86, iosArm64, iosSimulatorArm64, iosX64, js, linuxArm64, linuxX64, macosArm64, macosX64, mingwX64, tvosArm64, tvosSimulatorArm64, tvosX64, wasmJs, wasmWasi, watchosArm32, watchosArm64, watchosDeviceArm64, watchosSimulatorArm64, watchosX64]
+// Alias: native => [androidNativeArm32, androidNativeArm64, androidNativeX64, androidNativeX86, iosArm64, iosSimulatorArm64, iosX64, linuxArm64, linuxX64, macosArm64, macosX64, mingwX64, tvosArm64, tvosSimulatorArm64, tvosX64, watchosArm32, watchosArm64, watchosDeviceArm64, watchosSimulatorArm64, watchosX64]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <dev.whyoleg.sweetspi:sweetspi-runtime>
+open annotation class dev.whyoleg.sweetspi.internal/InternalSweetSpiApi : kotlin/Annotation { // dev.whyoleg.sweetspi.internal/InternalSweetSpiApi|null[0]
+    constructor <init>() // dev.whyoleg.sweetspi.internal/InternalSweetSpiApi.<init>|<init>(){}[0]
+}
+
+open annotation class dev.whyoleg.sweetspi/Service : kotlin/Annotation { // dev.whyoleg.sweetspi/Service|null[0]
+    constructor <init>() // dev.whyoleg.sweetspi/Service.<init>|<init>(){}[0]
+}
+
+open annotation class dev.whyoleg.sweetspi/ServiceProvider : kotlin/Annotation { // dev.whyoleg.sweetspi/ServiceProvider|null[0]
+    constructor <init>(kotlin/Array<out kotlin.reflect/KClass<*>>...) // dev.whyoleg.sweetspi/ServiceProvider.<init>|<init>(kotlin.Array<out|kotlin.reflect.KClass<*>>...){}[0]
+
+    final val services // dev.whyoleg.sweetspi/ServiceProvider.services|{}services[0]
+        final fun <get-services>(): kotlin/Array<out kotlin.reflect/KClass<*>> // dev.whyoleg.sweetspi/ServiceProvider.services.<get-services>|<get-services>(){}[0]
+}
+
+abstract interface dev.whyoleg.sweetspi.internal/InternalServiceModule { // dev.whyoleg.sweetspi.internal/InternalServiceModule|null[0]
+    abstract val requiredServices // dev.whyoleg.sweetspi.internal/InternalServiceModule.requiredServices|{}requiredServices[0]
+        abstract fun <get-requiredServices>(): kotlin.collections/Set<kotlin.reflect/KClass<*>> // dev.whyoleg.sweetspi.internal/InternalServiceModule.requiredServices.<get-requiredServices>|<get-requiredServices>(){}[0]
+    abstract val services // dev.whyoleg.sweetspi.internal/InternalServiceModule.services|{}services[0]
+        abstract fun <get-services>(): kotlin.collections/Set<kotlin.reflect/KClass<*>> // dev.whyoleg.sweetspi.internal/InternalServiceModule.services.<get-services>|<get-services>(){}[0]
+
+    abstract fun providers(kotlin.reflect/KClass<*>): kotlin.collections/List<*> // dev.whyoleg.sweetspi.internal/InternalServiceModule.providers|providers(kotlin.reflect.KClass<*>){}[0]
+}
+
+final object dev.whyoleg.sweetspi/ServiceLoader { // dev.whyoleg.sweetspi/ServiceLoader|null[0]
+    final fun <#A1: kotlin/Any> load(kotlin.reflect/KClass<#A1>): kotlin.collections/List<#A1> // dev.whyoleg.sweetspi/ServiceLoader.load|load(kotlin.reflect.KClass<0:0>){0§<kotlin.Any>}[0]
+}
+
+final fun dev.whyoleg.sweetspi.internal/registerInternalServiceModule(dev.whyoleg.sweetspi.internal/InternalServiceModule) // dev.whyoleg.sweetspi.internal/registerInternalServiceModule|registerInternalServiceModule(dev.whyoleg.sweetspi.internal.InternalServiceModule){}[0]
+final inline fun <#A: reified kotlin/Any> (dev.whyoleg.sweetspi/ServiceLoader).dev.whyoleg.sweetspi/load(): kotlin.collections/List<#A> // dev.whyoleg.sweetspi/load|load@dev.whyoleg.sweetspi.ServiceLoader(){0§<kotlin.Any>}[0]
+
+// Targets: [native]
+open class dev.whyoleg.sweetspi.internal/SynchronizedObject { // dev.whyoleg.sweetspi.internal/SynchronizedObject|null[0]
+    constructor <init>() // dev.whyoleg.sweetspi.internal/SynchronizedObject.<init>|<init>(){}[0]
+
+    final fun lock() // dev.whyoleg.sweetspi.internal/SynchronizedObject.lock|lock(){}[0]
+    final fun unlock() // dev.whyoleg.sweetspi.internal/SynchronizedObject.unlock|unlock(){}[0]
+}
