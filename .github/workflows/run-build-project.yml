@@ -1,0 +1,22 @@
+name: Build project
+on:
+  workflow_dispatch:
+  workflow_call:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 'ubuntu-latest', 'macos-latest', 'windows-latest' ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-environment
+        with:
+          cache-read-only: ${{ github.ref_name != 'main' }}
+      - run: ./gradlew build publishToMavenLocal --continue

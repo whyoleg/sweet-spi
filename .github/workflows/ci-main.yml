@@ -1,0 +1,15 @@
+name: main CI
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  checks:
+    uses: ./.github/workflows/run-checks.yml
+
+  publish:
+    needs: [ checks ]
+    uses: ./.github/workflows/publish-snapshot.yml
+    secrets: inherit

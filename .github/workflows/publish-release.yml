@@ -1,0 +1,24 @@
+name: Publish release
+on: [ workflow_call ]
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'whyoleg/sweet-spi'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-environment
+        with:
+          cache-disabled: true
+
+      - name: Publish release to Maven Central
+        run: ./gradlew publishToMavenCentral -Pversion=${{ github.ref_name }} --no-configuration-cache
+        env:
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{secrets.signingKey}}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{secrets.signingPassword}}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{secrets.sonatypeUsername}}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{secrets.sonatypePassword}}

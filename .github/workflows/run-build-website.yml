@@ -1,0 +1,23 @@
+name: Build website
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  website:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+      - run: pip install mkdocs-material
+      - uses: ./.github/actions/setup-environment
+
+      - name: Build documentation
+        run: ./gradlew mkdocsBuild --no-configuration-cache
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
