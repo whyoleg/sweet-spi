@@ -28,9 +28,7 @@ dependencies {
 
 // Dev artifacts for tests resolution - inspired by https://github.com/adamko-dev/dev-publish-plugin
 
-val devArtifacts by configurations.dependencyScope("devArtifacts") {
-    devArtifactAttributes(objects)
-}
+val devArtifacts by configurations.dependencyScope("devArtifacts")
 
 val devArtifactsResolver by configurations.resolvable("devArtifactsResolver") {
     devArtifactAttributes(objects)
@@ -61,9 +59,9 @@ testing.suites {
                         devArtifactsDirectories = devArtifactsResolver.incoming.files,
                         testKitDirectory = layout.buildDirectory.dir("test-kit"),
                         kotlinVersion = libs.versions.kotlin.asProvider(),
-            kspVersion = libs.versions.ksp,
-            projectVersion = provider { project.version.toString() }
-        )
+                        kspVersion = libs.versions.ksp,
+                        projectVersion = provider { project.version.toString() }
+                    )
                 )
             }
         }
