@@ -13,13 +13,11 @@ class TestProject(
 ) {
     fun gradleRunner(
         vararg arguments: String,
-        withCache: Boolean = true,
     ): GradleRunner = GradleRunner.create()
         .withGradleVersion(versions.gradleVersion)
         .withProjectDir(projectDirectory.toFile())
         .forwardOutput()
         .withArguments(
-            if (withCache) "--build-cache" else "--no-build-cache",
             "--stacktrace",
             *arguments,
         )

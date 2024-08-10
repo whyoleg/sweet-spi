@@ -26,24 +26,12 @@ class TestProjectBuilder(
         rewrite(relativePath) { it + "\n" + block() }
     }
 
-    fun appendBuilder(relativePath: String, block: StringBuilder.() -> Unit) {
-        append(relativePath) { buildString(block) }
-    }
-
     fun prepend(relativePath: String, block: () -> String) {
         rewrite(relativePath) { block() + "\n" + it }
     }
 
-    fun prependBuilder(relativePath: String, block: StringBuilder.() -> Unit) {
-        prepend(relativePath) { buildString(block) }
-    }
-
     fun file(relativePath: String, block: () -> String) {
         projectDirectory.resolve(relativePath).createParentDirectories().writeText(block())
-    }
-
-    fun fileBuilder(relativePath: String, block: StringBuilder.() -> Unit) {
-        file(relativePath) { buildString(block) }
     }
 
     fun build(): TestProject = TestProject(projectDirectory, versions)
