@@ -7,6 +7,7 @@
 import sweetbuild.*
 
 plugins {
+    `jvm-test-suite`
     id("sweetbuild.kotlin-base")
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.powerAssert)
@@ -20,9 +21,9 @@ kotlin {
 }
 
 dependencies {
-    implementation(gradleTestKit())
-    implementation(kotlin("test"))
-    implementation(libs.junit.params)
+    api(gradleTestKit())
+    api(kotlin("test-junit5"))
+    api(libs.junit.params)
 }
 
 // Dev artifacts for tests resolution - inspired by https://github.com/adamko-dev/dev-publish-plugin
@@ -43,18 +44,34 @@ dependencies {
     devArtifacts(projects.sweetspiGradlePlugin)
 }
 
-tasks.test {
-    useJUnitPlatform()
+testing.suites {
+    register<JvmTestSuite>("testRuntime")
+    register<JvmTestSuite>("testProcessor")
+    register<JvmTestSuite>("testPlugin")
 
-    jvmArgumentProviders.add(
-        TestsArgumentProvider(
-            devArtifactsDirectories = devArtifactsResolver.incoming.files,
-            testKitDirectory = layout.buildDirectory.dir("test-kit"),
-            kotlinVersion = libs.versions.kotlin.asProvider(),
+    withType<JvmTestSuite>().configureEach {
+        useJUnitJupiter()
+        dependencies {
+            implementation(project())
+        }
+        targets.configureEach {
+            this.testTask.configure {
+                jvmArgumentProviders.add(
+                    TestsArgumentProvider(
+                        devArtifactsDirectories = devArtifactsResolver.incoming.files,
+                        testKitDirectory = layout.buildDirectory.dir("test-kit"),
+                        kotlinVersion = libs.versions.kotlin.asProvider(),
             kspVersion = libs.versions.ksp,
             projectVersion = provider { project.version.toString() }
         )
-    )
+                )
+            }
+        }
+    }
+}
+
+tasks.check {
+    dependsOn(testing.suites)
 }
 
 class TestsArgumentProvider(

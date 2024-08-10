@@ -2,13 +2,14 @@
  * Copyright (c) 2024 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package dev.whyoleg.sweetspi.tests
+package dev.whyoleg.sweetspi.tests.plugin
 
+import dev.whyoleg.sweetspi.tests.*
 import org.gradle.testkit.runner.*
 import org.junit.jupiter.params.*
 import org.junit.jupiter.params.provider.*
 
-class PluginMultiplatformTest : AbstractTest() {
+class MultiplatformPluginTest : AbstractTest() {
     override val defaultTemplate: TestTemplate get() = TestTemplate.MULTIPLATFORM
 
     @ParameterizedTest

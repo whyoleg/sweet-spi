@@ -8,7 +8,10 @@ import org.junit.jupiter.api.*
 import java.nio.file.*
 import kotlin.io.path.*
 
-abstract class AbstractTest : TestProjectFactory {
+abstract class AbstractTest {
+    open val defaultTemplate: TestTemplate? get() = null
+    open val defaultVersions: TestVersions? get() = null
+
     private lateinit var temporaryDirectory: Path
 
     @BeforeEach
@@ -23,6 +26,11 @@ abstract class AbstractTest : TestProjectFactory {
         }
     }
 
-    final override val projectDirectory: Path
-        get() = temporaryDirectory.resolve("project").createDirectories()
+    val projectDirectory: Path get() = temporaryDirectory.resolve("project").createDirectories()
+
+    fun project(
+        template: TestTemplate = defaultTemplate ?: error("No default 'template' for $this"),
+        versions: TestVersions = defaultVersions ?: error("No default 'versions' for $this"),
+        block: TestProjectBuilder.() -> Unit,
+    ): TestProject = TestProjectBuilder(template, versions, projectDirectory).apply(block).build()
 }
