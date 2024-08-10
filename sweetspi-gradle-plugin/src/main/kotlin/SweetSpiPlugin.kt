@@ -11,13 +11,13 @@ public abstract class SweetSpiPlugin : Plugin<Project> {
     private val logger = Logging.getLogger(SweetSpiPlugin::class.java)
 
     final override fun apply(target: Project) {
-        val validateGradleKspConfiguration = target.providers
-            .gradleProperty("dev.whyoleg.sweetspi.validateGradleKspConfiguration")
+        val suppressGradleKspConfigurationChecker = target.providers
+            .gradleProperty("dev.whyoleg.sweetspi.suppressGradleKspConfigurationChecker")
             .map(String::toBooleanStrict)
             .orNull
-            ?: true // true by default
+            ?: false // false by default
 
-        if (!validateGradleKspConfiguration) return
+        if (suppressGradleKspConfigurationChecker) return
 
         var kspPluginApplied = false
         var kspProcessorAdded = false
