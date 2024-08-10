@@ -49,7 +49,8 @@ tasks.test {
     jvmArgumentProviders.add(
         TestsArgumentProvider(
             devArtifactsDirectories = devArtifactsResolver.incoming.files,
-            testKitDirectory = layout.buildDirectory.dir("test-kit"),
+            //testKitDirectory = layout.buildDirectory.dir("test-kit"),
+            testKitDirectory = layout.dir(provider { gradle.gradleUserHomeDir }),
             kotlinVersion = libs.versions.kotlin.asProvider(),
             kspVersion = libs.versions.ksp,
             projectVersion = provider { project.version.toString() }
