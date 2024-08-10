@@ -61,7 +61,7 @@ fun generate(codeGenerator: CodeGenerator, platform: PlatformInfo, context: Swee
             ).build()
 
     fun moduleTypeSpec(): TypeSpec =
-        TypeSpec.objectBuilder(moduleName)
+        TypeSpec.classBuilder(moduleName)
             // for JVM we need to be able to reference it in a service file
             .addModifiers(if (isJvm) INTERNAL else PRIVATE)
             .apply {
@@ -108,7 +108,7 @@ fun generate(codeGenerator: CodeGenerator, platform: PlatformInfo, context: Swee
                 addAnnotation(ClassName("kotlin.native", "EagerInitialization"))
             }
         }.initializer(
-            "%M($moduleName)",
+            "%M($moduleName())",
             MemberName("dev.whyoleg.sweetspi.internal", "registerInternalServiceModule")
         ).build()
 
