@@ -31,6 +31,6 @@ public object ServiceLoader {
     @JvmStatic
     @OptIn(InternalSweetSpiApi::class)
     public fun <T : Any> load(cls: KClass<T>): List<T> = internalServiceLoader.value.load(cls)
-}
 
-public inline fun <reified T : Any> ServiceLoader.load(): List<T> = load(T::class)
+    public inline fun <reified T : Any> ServiceLoader.load(): List<T> = load(T::class)
+}
