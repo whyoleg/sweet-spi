@@ -5,7 +5,6 @@
 package dev.whyoleg.sweetspi.tests.runtime
 
 import dev.whyoleg.sweetspi.tests.*
-import org.gradle.testkit.runner.*
 import kotlin.test.*
 
 class MultiplatformRuntimeTest : AbstractTest() {
@@ -15,30 +14,21 @@ class MultiplatformRuntimeTest : AbstractTest() {
     @Test
     fun testJvm() {
         val project = project {
-            append("build.gradle.kts") {
-                """
-                kotlin.withSweetSpi()
-                kotlin.jvm()
-                kotlin { sourceSets.jvmTest.dependencies { implementation(kotlin("test")) } }
-                """.trimIndent()
-            }
-            file("src/jvmMain/kotlin/main.kt") {
-                // language=kotlin
-                """
-                package sweettests.multiplatform
-
-                import dev.whyoleg.sweetspi.*
-
+            withSweetSpi()
+            jvmTarget()
+            kotlinTest(JVM_TEST)
+            kotlinSourceFile(
+                sourceSet = JVM_MAIN,
+                path = "main.kt",
+                code = """
                 @Service interface SimpleService
                 @ServiceProvider object SimpleServiceImpl : SimpleService
                 """.trimIndent()
-            }
-            file("src/jvmTest/kotlin/test.kt") {
-                // language=kotlin
-                """
-                package sweettests.multiplatform
-
-                import dev.whyoleg.sweetspi.*
+            )
+            kotlinSourceFile(
+                sourceSet = JVM_TEST,
+                path = "test.kt",
+                code = """
                 import kotlin.test.*
                 
                 class SimpleTest {
@@ -51,10 +41,10 @@ class MultiplatformRuntimeTest : AbstractTest() {
                     }
                 }
                 """.trimIndent()
-            }
+            )
         }
-        project.gradleRunner("build").build().apply {
-            assert(task(":jvmTest")!!.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE))
+        project.gradle("build") {
+            assert(task(":jvmTest")!!.outcome.isPositive)
         }
     }
 
@@ -65,20 +55,12 @@ class MultiplatformRuntimeTest : AbstractTest() {
                 // for native tasks
                 "import org.jetbrains.kotlin.gradle.plugin.mpp.*"
             }
+            withSweetSpi()
+            allTargets()
+            kotlinTest(COMMON_TEST)
             append("build.gradle.kts") {
                 """
                 kotlin {
-                  withSweetSpi()
-                  
-                  jvm()
-                  js { nodejs(); browser() }
-                  wasmJs { nodejs(); browser() }
-                  wasmWasi { nodejs() }             
-                }
-                ${allKotlinNativeTargets()}
-                kotlin {
-                  sourceSets.commonTest.dependencies { implementation(kotlin("test")) }
-                  
                   // setup tests running in RELEASE mode
                   targets.withType<KotlinNativeTarget>().configureEach {
                       binaries.test(listOf(NativeBuildType.RELEASE))
@@ -91,23 +73,16 @@ class MultiplatformRuntimeTest : AbstractTest() {
                 }
                 """.trimIndent()
             }
-            file("src/commonMain/kotlin/main.kt") {
-                // language=kotlin
-                """
-                package sweettests.multiplatform
-                
-                import dev.whyoleg.sweetspi.*
-
+            kotlinSourceFile(
+                sourceSet = COMMON_MAIN, path = "main.kt",
+                code = """
                 @Service interface SimpleService
                 @ServiceProvider object SimpleServiceImpl : SimpleService
                 """.trimIndent()
-            }
-            file("src/commonTest/kotlin/test.kt") {
-                // language=kotlin
-                """
-                package sweettests.multiplatform
-
-                import dev.whyoleg.sweetspi.*
+            )
+            kotlinSourceFile(
+                sourceSet = COMMON_TEST, path = "test.kt",
+                code = """
                 import kotlin.test.*
                 
                 class SimpleTest {
@@ -120,13 +95,13 @@ class MultiplatformRuntimeTest : AbstractTest() {
                     }
                 }
                 """.trimIndent()
-            }
+            )
         }
-        project.gradleRunner("build").build().apply {
-            assert(task(":jvmTest")!!.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE))
-            assert(task(":jsTest")!!.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE))
-            assert(task(":wasmJsTest")!!.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE))
-            assert(task(":wasmWasiTest")!!.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE))
+        project.gradle("build") {
+            assert(task(":jvmTest")!!.outcome.isPositive)
+            assert(task(":jsTest")!!.outcome.isPositive)
+            assert(task(":wasmJsTest")!!.outcome.isPositive)
+            assert(task(":wasmWasiTest")!!.outcome.isPositive)
 
             // tasks are different on different OS, only desktop targets are mentioned
             val nativeTestTasks = setOf(
@@ -136,12 +111,7 @@ class MultiplatformRuntimeTest : AbstractTest() {
                 ":linuxArm64Test",
                 ":mingwX64Test",
             )
-            assert(
-                tasks.any {
-                    it.path in nativeTestTasks &&
-                            it.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE)
-                }
-            )
+            assert(tasks.any { it.path in nativeTestTasks && it.outcome.isPositive })
         }
     }
 }

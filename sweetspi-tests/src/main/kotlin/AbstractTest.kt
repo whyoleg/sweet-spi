@@ -31,6 +31,41 @@ abstract class AbstractTest {
     fun project(
         template: TestTemplate = defaultTemplate ?: error("No default 'template' for $this"),
         versions: TestVersions = defaultVersions ?: error("No default 'versions' for $this"),
-        block: TestProjectBuilder.() -> Unit,
-    ): TestProject = TestProjectBuilder(template, versions, projectDirectory).apply(block).build()
+        block: TestFiles.() -> Unit,
+    ): TestProject {
+        template.templatePath.copyToRecursively(projectDirectory, followLinks = false, overwrite = true)
+        TestFiles(projectDirectory).apply {
+            rewriteSettingsGradleKts()
+            rewriteLibsVersionsToml(versions)
+            block()
+        }
+        return TestProject(projectDirectory, versions)
+    }
+}
+
+private fun TestFiles.rewriteSettingsGradleKts(): Unit = rewrite("settings.gradle.kts") {
+    it.replace(
+        oldValue = "%DEV_ARTIFACTS_REPOSITORIES",
+        """
+        |exclusiveContent {
+        |    filter { includeGroup("dev.whyoleg.sweetspi") }
+        |    forRepositories(
+        |        ${TestsArguments.devArtifactsDirectories.joinToString(",\n|        ") { "maven(\"$it\")" }}
+        |    )
+        |}
+        """.trimMargin()
+    )
+}
+
+private fun TestFiles.rewriteLibsVersionsToml(versions: TestVersions): Unit = rewrite("gradle/libs.versions.toml") {
+    it.replace(
+        oldValue = "%KOTLIN_VERSION",
+        newValue = versions.kotlinVersion
+    ).replace(
+        oldValue = "%KSP_VERSION",
+        newValue = versions.kspVersion
+    ).replace(
+        oldValue = "%SWEETSPI_VERSION",
+        newValue = TestsArguments.devArtifactsVersion
+    )
 }

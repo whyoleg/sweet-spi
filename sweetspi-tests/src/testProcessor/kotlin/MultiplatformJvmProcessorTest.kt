@@ -9,33 +9,26 @@ import org.gradle.testkit.runner.*
 import kotlin.io.path.*
 import kotlin.test.*
 
-class MultiplatformProcessorTest : AbstractTest() {
+class MultiplatformJvmProcessorTest : AbstractTest() {
     override val defaultTemplate: TestTemplate get() = TestTemplate.MULTIPLATFORM
     override val defaultVersions: TestVersions get() = TestsArguments.defaultTestVersions
 
     @Test
     fun testJvmTargetOutput() {
         val project = project {
-            append("build.gradle.kts") {
-                """
-                kotlin.withSweetSpi()
-                kotlin.jvm()
-                """.trimIndent()
-            }
-            file("src/jvmMain/kotlin/main.kt") {
-                // language=kotlin
-                """
-                package sweettests.multiplatform
-                import dev.whyoleg.sweetspi.*
-                
+            withSweetSpi()
+            jvmTarget()
+            kotlinSourceFile(
+                sourceSet = JVM_MAIN,
+                path = "main.kt",
+                code = """
                 @Service interface SimpleService
                 
                 @ServiceProvider object SimpleServiceImpl: SimpleService    
                 """.trimIndent()
-            }
+            )
         }
-
-        project.gradleRunner("build").build().run {
+        project.gradle("build") {
             val outputDirectory = projectDirectory.resolve("build/generated/ksp/jvm/jvmMain")
             assert(outputDirectory.exists())
             val kotlinFile = outputDirectory.resolve("kotlin/sweettests/multiplatform/sweettests_multiplatform.kt")
@@ -49,33 +42,27 @@ class MultiplatformProcessorTest : AbstractTest() {
     @Test
     fun testJvmProviderNotExtendingService() {
         val project = project {
-            append("build.gradle.kts") {
-                """
-                kotlin.withSweetSpi()
-                kotlin.jvm()
-                """.trimIndent()
-            }
-            file("src/jvmMain/kotlin/main.kt") {
-                // language=kotlin
-                """
-                package sweettests.multiplatform
-                import dev.whyoleg.sweetspi.*
-                
+            withSweetSpi()
+            jvmTarget()
+            kotlinSourceFile(
+                sourceSet = JVM_MAIN,
+                path = "main.kt",
+                code = """
                 @Service interface SimpleService
                 
                 @ServiceProvider object SimpleServiceImpl1    
                 @ServiceProvider object SimpleServiceImpl2: CharSequence    
-            """.trimIndent()
-            }
+                """.trimIndent()
+            )
         }
 
-        project.gradleRunner("build").buildAndFail().run {
+        project.gradle("build", expectFailure = true) {
             assertEquals(
                 listOf(":kspKotlinJvm"),
                 taskPaths(TaskOutcome.FAILED)
             )
-            assertContains(output, "main.kt:6: No applicable services found for 'SimpleServiceImpl1'")
-            assertContains(output, "main.kt:7: No applicable services found for 'SimpleServiceImpl2'")
+            assertContains(output, "main.kt:5: No applicable services found for 'SimpleServiceImpl1'")
+            assertContains(output, "main.kt:6: No applicable services found for 'SimpleServiceImpl2'")
         }
     }
 }

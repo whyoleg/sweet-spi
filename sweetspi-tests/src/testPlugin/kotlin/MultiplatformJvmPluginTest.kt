@@ -8,17 +8,17 @@ import dev.whyoleg.sweetspi.tests.*
 import org.junit.jupiter.params.*
 import org.junit.jupiter.params.provider.*
 
-class MultiplatformPluginTest : AbstractTest() {
+class MultiplatformJvmPluginTest : AbstractTest() {
     override val defaultTemplate: TestTemplate get() = TestTemplate.MULTIPLATFORM
 
     @ParameterizedTest
     @ArgumentsSource(TestVersionsProvider.All::class)
-    fun testAllTargets(versions: TestVersions) {
+    fun testJvm(versions: TestVersions) {
         val project = project(versions = versions) {
             withSweetSpi()
-            allTargets()
+            jvmTarget()
             kotlinSourceFile(
-                sourceSet = COMMON_MAIN,
+                sourceSet = JVM_MAIN,
                 path = "main.kt",
                 code = """
                 @Service interface SimpleService
@@ -28,19 +28,6 @@ class MultiplatformPluginTest : AbstractTest() {
         }
         project.gradle("build") {
             assert(task(":kspKotlinJvm")!!.outcome.isPositive)
-            assert(task(":kspKotlinJs")!!.outcome.isPositive)
-            assert(task(":kspKotlinWasmJs")!!.outcome.isPositive)
-            assert(task(":kspKotlinWasmWasi")!!.outcome.isPositive)
-
-            // tasks are different on different OS, only desktop targets are mentioned
-            val nativeTestTasks = setOf(
-                ":kspKotlinMacosArm64",
-                ":kspKotlinMacosX64",
-                ":kspKotlinLinuxX64",
-                ":kspKotlinLinuxArm64",
-                ":kspKotlinMingwX64",
-            )
-            assert(tasks.any { it.path in nativeTestTasks && it.outcome.isPositive })
         }
     }
 }

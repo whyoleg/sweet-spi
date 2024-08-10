@@ -8,17 +8,23 @@ import org.gradle.testkit.runner.*
 import java.nio.file.*
 
 class TestProject(
-    val projectDirectory: Path,
+    private val projectDirectory: Path,
     private val versions: TestVersions,
 ) {
-    fun gradleRunner(
-        vararg arguments: String,
-    ): GradleRunner = GradleRunner.create()
-        .withGradleVersion(versions.gradleVersion)
-        .withProjectDir(projectDirectory.toFile())
-        .forwardOutput()
-        .withArguments(
-            "--stacktrace",
-            *arguments,
-        )
+    fun gradle(vararg arguments: String, expectFailure: Boolean = false, block: BuildResult.() -> Unit) {
+        val runner = GradleRunner.create()
+            .withGradleVersion(versions.gradleVersion)
+            .withProjectDir(projectDirectory.toFile())
+            .forwardOutput()
+            .withArguments("--stacktrace", *arguments)
+
+        val result = when {
+            expectFailure -> runner.buildAndFail()
+            else          -> runner.build()
+        }
+
+        result.block()
+    }
 }
+
+val TaskOutcome.isPositive get() = this in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE)
