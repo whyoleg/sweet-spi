@@ -101,5 +101,5 @@ public object ServiceLoader {
      * Retrieves a list of services of the specified type [T], which must be annotated with [Service].
      * Providers of these services must be annotated with [ServiceProvider].
      */
-    public inline fun <reified T : Any> ServiceLoader.load(): List<T> = load(T::class)
+    public inline fun <reified T : Any> load(): List<T> = load(T::class)
 }

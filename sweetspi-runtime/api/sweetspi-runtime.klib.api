@@ -33,7 +33,7 @@ abstract interface dev.whyoleg.sweetspi.internal/InternalServiceModule { // dev.
 
 final object dev.whyoleg.sweetspi/ServiceLoader { // dev.whyoleg.sweetspi/ServiceLoader|null[0]
     final fun <#A1: kotlin/Any> load(kotlin.reflect/KClass<#A1>): kotlin.collections/List<#A1> // dev.whyoleg.sweetspi/ServiceLoader.load|load(kotlin.reflect.KClass<0:0>){0§<kotlin.Any>}[0]
-    final inline fun <#A1: reified kotlin/Any> (dev.whyoleg.sweetspi/ServiceLoader).load(): kotlin.collections/List<#A1> // dev.whyoleg.sweetspi/ServiceLoader.load|load@dev.whyoleg.sweetspi.ServiceLoader(){0§<kotlin.Any>}[0]
+    final inline fun <#A1: reified kotlin/Any> load(): kotlin.collections/List<#A1> // dev.whyoleg.sweetspi/ServiceLoader.load|load(){0§<kotlin.Any>}[0]
 }
 
 final fun dev.whyoleg.sweetspi.internal/registerInternalServiceModule(dev.whyoleg.sweetspi.internal/InternalServiceModule) // dev.whyoleg.sweetspi.internal/registerInternalServiceModule|registerInternalServiceModule(dev.whyoleg.sweetspi.internal.InternalServiceModule){}[0]
