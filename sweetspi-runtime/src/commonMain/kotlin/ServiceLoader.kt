@@ -6,7 +6,6 @@
 
 package dev.whyoleg.sweetspi
 
-import dev.whyoleg.sweetspi.ServiceLoader.load
 import dev.whyoleg.sweetspi.internal.*
 import kotlin.jvm.*
 import kotlin.reflect.*
