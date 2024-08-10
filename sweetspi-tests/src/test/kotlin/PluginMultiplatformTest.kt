@@ -50,15 +50,9 @@ class PluginMultiplatformTest : AbstractTest() {
                   jvm()
                   js { nodejs(); browser() }
                   wasmJs { nodejs(); browser() }
-                  wasmWasi { nodejs() }             
-                  iosArm64(); iosX64(); iosSimulatorArm64()              
-                  watchosX64(); watchosArm32(); watchosArm64(); watchosSimulatorArm64(); watchosDeviceArm64()              
-                  tvosX64(); tvosArm64(); tvosSimulatorArm64()              
-                  macosX64(); macosArm64()                  
-                  linuxX64(); linuxArm64()              
-                  mingwX64()              
-                  androidNativeX64(); androidNativeX86(); androidNativeArm64(); androidNativeArm32()
+                  wasmWasi { nodejs() }
                 }
+                ${allKotlinNativeTargets()}
                 """.trimIndent()
             }
             file("src/commonMain/kotlin/main.kt") {

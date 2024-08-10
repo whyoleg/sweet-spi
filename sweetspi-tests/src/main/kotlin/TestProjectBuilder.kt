@@ -34,6 +34,31 @@ class TestProjectBuilder(
         projectDirectory.resolve(relativePath).createParentDirectories().writeText(block())
     }
 
+    fun allKotlinNativeTargets(): String = if (System.getProperty("os.name")?.startsWith("Mac") == true) {
+        """
+        // apple related targets can be used only on macos
+        kotlin {
+            iosArm64(); iosX64(); iosSimulatorArm64()
+            watchosX64(); watchosArm32(); watchosArm64(); watchosSimulatorArm64(); watchosDeviceArm64()
+            tvosX64(); tvosArm64(); tvosSimulatorArm64()
+            macosX64(); macosArm64()
+            
+            linuxX64(); linuxArm64()
+            mingwX64()
+            androidNativeX64(); androidNativeX86(); androidNativeArm64(); androidNativeArm32()
+        }
+        """.trimIndent()
+    } else {
+        """
+        kotlin {
+            linuxX64(); linuxArm64()
+            mingwX64()
+            androidNativeX64(); androidNativeX86(); androidNativeArm64(); androidNativeArm32()
+        }
+        """.trimIndent()
+    }
+
+
     fun build(): TestProject = TestProject(projectDirectory, versions)
 }
 
