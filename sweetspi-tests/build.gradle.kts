@@ -4,6 +4,7 @@
 
 @file:Suppress("UnstableApiUsage", "HasPlatformType")
 
+import org.jetbrains.kotlin.gradle.*
 import sweetbuild.*
 
 plugins {
@@ -40,6 +41,15 @@ dependencies {
     devArtifacts(projects.sweetspiRuntime)
     devArtifacts(projects.sweetspiProcessor)
     devArtifacts(projects.sweetspiGradlePlugin)
+}
+
+@OptIn(ExperimentalKotlinGradlePluginApi::class)
+powerAssert {
+    includedSourceSets.addAll(
+        "testRuntime",
+        "testProcessor",
+        "testPlugin"
+    )
 }
 
 testing.suites {

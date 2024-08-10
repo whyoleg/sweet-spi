@@ -86,13 +86,14 @@ fun TestFiles.kotlinSourceFile(
     sourceSet: String,
     path: String,
     packageName: String = "sweettests.multiplatform",
-    imports: List<String> = listOf("dev.whyoleg.sweetspi.*"),
+    imports: List<String> = emptyList(),
     @Language("kotlin")
     code: String,
 ) {
     file("src/$sourceSet/kotlin/$path") {
         buildString {
             append("package $packageName\n")
+            append("import dev.whyoleg.sweetspi.*")
             imports.joinTo(buffer = this, separator = "\n", postfix = "\n") { "import $it" }
             append(code)
         }

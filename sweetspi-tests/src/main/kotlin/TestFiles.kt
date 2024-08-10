@@ -8,6 +8,7 @@ import java.nio.file.*
 import kotlin.io.path.*
 
 const val BUILD_GRADLE_KTS = "build.gradle.kts"
+const val SETTINGS_GRADLE_KTS = "settings.gradle.kts"
 
 class TestFiles(private val root: Path) {
 

@@ -12,53 +12,17 @@ class MultiplatformRuntimeTest : AbstractTest() {
     override val defaultVersions: TestVersions get() = TestsArguments.defaultTestVersions
 
     @Test
-    fun testJvm() {
-        val project = project {
-            withSweetSpi()
-            jvmTarget()
-            kotlinTest(JVM_TEST)
-            kotlinSourceFile(
-                sourceSet = JVM_MAIN,
-                path = "main.kt",
-                code = """
-                @Service interface SimpleService
-                @ServiceProvider object SimpleServiceImpl : SimpleService
-                """.trimIndent()
-            )
-            kotlinSourceFile(
-                sourceSet = JVM_TEST,
-                path = "test.kt",
-                code = """
-                import kotlin.test.*
-                
-                class SimpleTest {
-                    @Test
-                    fun doTest() {
-                        val services = ServiceLoader.load<SimpleService>()
-                        assertEquals(1, services.size)
-                        val service = services.single()
-                        assertEquals(SimpleServiceImpl, service)
-                    }
-                }
-                """.trimIndent()
-            )
-        }
-        project.gradle("build") {
-            assert(task(":jvmTest")!!.outcome.isPositive)
-        }
-    }
-
-    @Test
     fun testAllTargets() {
         val project = project {
-            prepend("build.gradle.kts") {
-                // for native tasks
-                "import org.jetbrains.kotlin.gradle.plugin.mpp.*"
-            }
+
             withSweetSpi()
             allTargets()
             kotlinTest(COMMON_TEST)
-            append("build.gradle.kts") {
+            prepend(BUILD_GRADLE_KTS) {
+                // for native tasks
+                "import org.jetbrains.kotlin.gradle.plugin.mpp.*"
+            }
+            append(BUILD_GRADLE_KTS) {
                 """
                 kotlin {
                   // setup tests running in RELEASE mode

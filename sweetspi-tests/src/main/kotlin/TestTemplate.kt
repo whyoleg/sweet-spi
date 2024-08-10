@@ -14,6 +14,7 @@ class TestTemplate private constructor(path: String) {
         private val templates = Path("src/templates")
 
         val MULTIPLATFORM = TestTemplate("multiplatform")
+        val MULTIPLATFORM_MULTIMODULE = TestTemplate("multiplatform-multimodule")
         val JVM = TestTemplate("jvm")
         val ANDROID = TestTemplate("android")
     }
