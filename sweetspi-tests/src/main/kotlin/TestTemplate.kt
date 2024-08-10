@@ -8,7 +8,7 @@ import java.nio.file.*
 import kotlin.io.path.*
 
 class TestTemplate private constructor(path: String) {
-    val templatePath: Path = templates.resolve(path)//.absolute()
+    val templatePath: Path = templates.resolve(path)
 
     companion object {
         private val templates = Path("src/templates")

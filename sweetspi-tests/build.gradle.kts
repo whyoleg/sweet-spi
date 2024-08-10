@@ -86,7 +86,7 @@ class TestsArgumentProvider(
 
     private val devArtifactsDirectoriesList: Provider<String>
         get() = devArtifactsDirectories.elements.map { directories ->
-            directories.joinToString(",") { it.asFile.canonicalPath }
+            directories.joinToString(",") { it.asFile.canonicalFile.invariantSeparatorsPath }
         }
 
     override fun asArguments(): Iterable<String> = listOf(
