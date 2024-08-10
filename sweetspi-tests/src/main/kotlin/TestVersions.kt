@@ -4,7 +4,7 @@
 
 package dev.whyoleg.sweetspi.tests
 
-class TestVersions(
+data class TestVersions(
     val gradleVersion: String,
     val kotlinVersion: String,
     val kspVersion: String,
