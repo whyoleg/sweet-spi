@@ -8,6 +8,8 @@ import org.gradle.api.*
 import org.gradle.api.logging.*
 
 /**
+ * This plugin performs several checks that KSP is configured correctly.
+ *
  * By default, this plugin performs the following checks:
  * - Ensures that the KSP (Kotlin Symbol Processing) Gradle Plugin is applied to your project.
  * - Ensures that the sweet-spi KSP processor (`sweetspi-processor` artifact) is added to at least one of the KSP configurations.

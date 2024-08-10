@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.*
 
 /**
  * This method returns a dependency object for the `sweetspi-processor` which can be used to manually add dependency on it.
+ *
  * The version of the library is determined by the version of the plugin.
  *
  * Usage:
@@ -40,6 +41,7 @@ public fun DependencyHandler.sweetSpiProcessor(): Dependency {
 
 /**
  * This method returns a dependency object for the `sweetspi-runtime` which can be used to manually add dependency on it.
+ *
  * The version of the library is determined by the version of the plugin.
  * This function is applicable for projects with `kotlin-jvm` plugin.
  *
@@ -62,6 +64,7 @@ public fun DependencyHandler.sweetSpiRuntime(): Dependency {
 
 /**
  * This method returns a dependency object for the `sweetspi-runtime` which can be used to manually add dependency on it.
+ *
  * The version of the library is determined by the version of the plugin
  * This function is applicable for projects with `kotlin-multiplatform` plugin.
  *
@@ -86,8 +89,24 @@ public fun KotlinDependencyHandler.sweetSpiRuntime(): Dependency = project.depen
 /**
  * Adds the sweet-spi runtime and KSP processor dependencies to the compilations of all targets.
  *
- * @param compilationFilter A lambda that determines whether dependencies should be added to a compilation.
- *                          By default, only `main` compilations are affected
+ * It's possible to filter compilations which should receive those dependencies using [compilationFilter].
+ * By default, only `main` compilations are affected
+ *
+ * Usage:
+ * ```
+ * // in build.gradle.kts
+ *
+ * // don't forget to add an import
+ * import dev.whyoleg.sweetspi.gradle.*
+ *
+ * kotlin {
+ *     // to add to `main` compilations only
+ *     withSweetSpi()
+ *
+ *     // to add to `test` compilation
+ *     withSweetSpi { it.name == "test" }
+ * }
+ * ```
  */
 public fun KotlinProjectExtension.withSweetSpi(
     compilationFilter: (KotlinCompilation<*>) -> Boolean = { it.name.endsWith("main", ignoreCase = true) },
@@ -101,8 +120,26 @@ public fun KotlinProjectExtension.withSweetSpi(
 /**
  * Adds the sweet-spi runtime and KSP processor dependencies to the compilations of this target.
  *
- * @param compilationFilter A lambda that determines whether dependencies should be added to a compilation.
- *                          By default, only `main` compilations are affected
+ * It's possible to filter compilations which should receive those dependencies using [compilationFilter].
+ * By default, only `main` compilations are affected
+ *
+ * Usage:
+ * ```
+ * // in build.gradle.kts
+ *
+ * // don't forget to add an import
+ * import dev.whyoleg.sweetspi.gradle.*
+ *
+ * kotlin {
+ *     jvm {
+ *         // to add to `main` compilations only
+ *         withSweetSpi()
+ *
+ *         // to add to all compilations
+ *         withSweetSpi { true }
+ *     }
+ * }
+ * ```
  */
 public fun KotlinTarget.withSweetSpi(
     compilationFilter: (KotlinCompilation<*>) -> Boolean = { it.name.endsWith("main", ignoreCase = true) },
@@ -114,6 +151,22 @@ public fun KotlinTarget.withSweetSpi(
 
 /**
  * Adds the sweet-spi runtime and KSP processor dependencies to the specified Kotlin compilation.
+ *
+ * Usage:
+ * ```
+ * // in build.gradle.kts
+ *
+ * // don't forget to add an import
+ * import dev.whyoleg.sweetspi.gradle.*
+ *
+ * kotlin {
+ *     wasmJs {
+ *         compilations.named("test") {
+ *             withSweetSpi()
+ *         }
+ *     }
+ * }
+ * ```
  */
 public fun KotlinCompilation<*>.withSweetSpi() {
     val configurationName = getKotlinConfigurationName(this) ?: return

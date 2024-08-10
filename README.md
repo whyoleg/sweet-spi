@@ -35,6 +35,12 @@ sweet-spi consists of three parts:
 * KSP processor which generates a bit of glue code for each target
 * Gradle Plugin which simplifies setup of KSP and runtime
 
+Documentation can be found here, or on the website:
+
+* [Project website](https://whyoleg.github.io/sweet-spi/)
+* [Runtime API reference](https://whyoleg.github.io/sweet-spi/runtime-api/)
+* [Gradle Plugin API reference](https://whyoleg.github.io/sweet-spi/gradle-plugin-api/)
+
 ## Features
 
 - Easy-to-use SPI with just two annotations and one object
@@ -88,7 +94,7 @@ sweet-spi Gradle plugin will automatically add runtime and KSP processor depende
     * if you need to expose sweet-spi to your consumers, just add `api(sweetSpiRuntime())` to `dependencies` block of the appropriate source
       set
     * it's also possible to configure sweet-spi only for specific target or even compilation using the same named extension function
-      `withSweetApi` but on `KotlinTarget` or `KotlinCompilation`
+      `withsweetSpi` but on `KotlinTarget` or `KotlinCompilation`
 * KSP processor will be added to relevant configuration in all the same places where `withSweetSpi` is called
     * by default, KSP processor is not applied for `test` source set tree.
       For this you could manually add KSP processor there, or use `compilationFilter` parameter of `withSweetSpi` function

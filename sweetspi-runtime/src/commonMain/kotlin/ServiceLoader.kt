@@ -13,10 +13,12 @@ import kotlin.reflect.*
 
 /**
  * This annotation is used to indicate that a class is a service which could be provided via [ServiceLoader.load]
- * Implementations of these services are identified by [ServiceProvider] annotation.
- * This annotation could be applied only to interfaces or abstract classes.
  *
- * Example of usage:
+ * Implementations of these services are identified by [ServiceProvider] annotation.
+ *
+ * This annotation could be applied only to **interfaces** or **abstract classes**.
+ *
+ * Usage:
  * ```
  * @Service
  * interface SimpleService {
@@ -31,6 +33,7 @@ public annotation class Service
 
 /**
  * This annotation is used to identify which service(s) the annotated element provides an instance for.
+ *
  * If no [services] are explicitly provided, the plugin will attempt to find all supertypes of the element
  * that have the [Service] annotation.
  *
@@ -39,7 +42,7 @@ public annotation class Service
  * - [AnnotationTarget.PROPERTY]: Only applicable to immutable non-suspend properties with getter or initializer
  * - [AnnotationTarget.FUNCTION]: Only applicable to non-suspend functions without arguments and without receiver
  *
- * Example of usage:
+ * Usage:
  * ```
  * @ServiceProvider(SimpleService::class)
  * object SimpleServiceImpl : SimpleService {
@@ -56,13 +59,12 @@ public annotation class ServiceProvider(
 
 /**
  * Provides functionality for dynamically loading service implementations using the Service Provider Interface (SPI) mechanism.
- * This allows for the flexible and dynamic discovery and instantiation of service providers.
+ *
  * It works in conjunction with [Service] and [ServiceProvider] annotations:
  * - interfaces or abstract classes annotated with [Service] can be retrieved using this loader.
  * - implementations of these services are identified using the [ServiceProvider] annotation.
  *
- * Example of usage:
- *
+ * Usage:
  * ```
  * // module: A
  * @Service
@@ -90,9 +92,6 @@ public object ServiceLoader {
     /**
      * Retrieves a list of services of the specified type [T], which must be annotated with [Service].
      * Providers of these services must be annotated with [ServiceProvider].
-     *
-     * @param cls The class of the service to retrieve
-     * @return A list of services of the specified type [T] that were discovered and instantiated
      */
     @JvmStatic
     @OptIn(InternalSweetSpiApi::class)
@@ -101,8 +100,6 @@ public object ServiceLoader {
     /**
      * Retrieves a list of services of the specified type [T], which must be annotated with [Service].
      * Providers of these services must be annotated with [ServiceProvider].
-     *
-     * @return A list of services of the specified type [T] that were discovered and instantiated
      */
     public inline fun <reified T : Any> ServiceLoader.load(): List<T> = load(T::class)
 }

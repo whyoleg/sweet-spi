@@ -28,6 +28,7 @@ tasks.register<Copy>("mkdocsCopy") {
 }
 
 tasks.register<Exec>("mkdocsBuild") {
+    dependsOn(":mkdocsCopy")
     dependsOn(":sweetspi-runtime:dokkaHtml")
     dependsOn(":sweetspi-gradle-plugin:dokkaHtml")
     commandLine("mkdocs", "build", "--clean", "--strict")

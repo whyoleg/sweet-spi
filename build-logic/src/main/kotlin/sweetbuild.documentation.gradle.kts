@@ -12,6 +12,7 @@ plugins {
 tasks.withType<DokkaTask>().configureEach {
     failOnWarning.set(true)
     dokkaSourceSets.configureEach {
+        includes.from("README.md")
         reportUndocumented.set(false) // set true later
         sourceLink {
             localDirectory.set(rootDir)
