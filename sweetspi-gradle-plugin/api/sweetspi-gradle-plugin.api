@@ -1,14 +1,12 @@
 public final class dev/whyoleg/sweetspi/gradle/ApiKt {
 	public static final fun sweetSpiProcessor (Lorg/gradle/api/artifacts/dsl/DependencyHandler;)Lorg/gradle/api/artifacts/Dependency;
-	public static final fun sweetSpiProcessor (Lorg/jetbrains/kotlin/gradle/plugin/KotlinDependencyHandler;)Lorg/gradle/api/artifacts/Dependency;
 	public static final fun sweetSpiRuntime (Lorg/gradle/api/artifacts/dsl/DependencyHandler;)Lorg/gradle/api/artifacts/Dependency;
 	public static final fun sweetSpiRuntime (Lorg/jetbrains/kotlin/gradle/plugin/KotlinDependencyHandler;)Lorg/gradle/api/artifacts/Dependency;
-	public static final fun withSweetSpi (Lorg/jetbrains/kotlin/gradle/dsl/KotlinProjectExtension;ZLkotlin/jvm/functions/Function1;)V
-	public static final fun withSweetSpi (Lorg/jetbrains/kotlin/gradle/plugin/KotlinCompilation;Z)V
-	public static final fun withSweetSpi (Lorg/jetbrains/kotlin/gradle/plugin/KotlinTarget;ZLkotlin/jvm/functions/Function1;)V
-	public static synthetic fun withSweetSpi$default (Lorg/jetbrains/kotlin/gradle/dsl/KotlinProjectExtension;ZLkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
-	public static synthetic fun withSweetSpi$default (Lorg/jetbrains/kotlin/gradle/plugin/KotlinCompilation;ZILjava/lang/Object;)V
-	public static synthetic fun withSweetSpi$default (Lorg/jetbrains/kotlin/gradle/plugin/KotlinTarget;ZLkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+	public static final fun withSweetSpi (Lorg/jetbrains/kotlin/gradle/dsl/KotlinProjectExtension;Lkotlin/jvm/functions/Function1;)V
+	public static final fun withSweetSpi (Lorg/jetbrains/kotlin/gradle/plugin/KotlinCompilation;)V
+	public static final fun withSweetSpi (Lorg/jetbrains/kotlin/gradle/plugin/KotlinTarget;Lkotlin/jvm/functions/Function1;)V
+	public static synthetic fun withSweetSpi$default (Lorg/jetbrains/kotlin/gradle/dsl/KotlinProjectExtension;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+	public static synthetic fun withSweetSpi$default (Lorg/jetbrains/kotlin/gradle/plugin/KotlinTarget;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
 }
 
 public abstract class dev/whyoleg/sweetspi/gradle/SweetSpiPlugin : org/gradle/api/Plugin {

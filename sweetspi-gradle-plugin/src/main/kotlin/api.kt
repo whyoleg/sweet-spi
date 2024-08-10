@@ -10,39 +10,112 @@ import org.jetbrains.kotlin.gradle.dsl.*
 import org.jetbrains.kotlin.gradle.plugin.*
 import org.jetbrains.kotlin.gradle.plugin.mpp.*
 
-public fun DependencyHandler.sweetSpiRuntime(): Dependency {
-    return create("dev.whyoleg.sweetspi:sweetspi-runtime:${SweetSpiProperties.version}")
-}
-
+/**
+ * This method returns a dependency object for the `sweetspi-processor` which can be used to manually add dependency on it.
+ * The version of the library is determined by the version of the plugin.
+ *
+ * Usage:
+ * ```
+ * // in build.gradle.kts
+ *
+ * // don't forget to add an import
+ * import dev.whyoleg.sweetspi.gradle.*
+ *
+ * dependencies {
+ *     // for kotlin-jvm projects
+ *     ksp(sweetSpiProcessor())
+ *     // for kotlin-multiplatform projects
+ *     // Note: no need to add it to the `common` compilations, as it'd do nothing there
+ *     add("kspJvm", sweetSpiProcessor())
+ *     // if needed, `test` source sets support
+ *     add("kspJvmTest", sweetSpiProcessor())
+ *     // and for each other Kotlin target...
+ *     add("kspLinuxX64Test", sweetSpiProcessor())
+ * }
+ * ```
+ */
 public fun DependencyHandler.sweetSpiProcessor(): Dependency {
     return create("dev.whyoleg.sweetspi:sweetspi-processor:${SweetSpiProperties.version}")
 }
 
+/**
+ * This method returns a dependency object for the `sweetspi-runtime` which can be used to manually add dependency on it.
+ * The version of the library is determined by the version of the plugin.
+ * This function is applicable for projects with `kotlin-jvm` plugin.
+ *
+ * Usage:
+ * ```
+ * // in build.gradle.kts
+ *
+ * // don't forget to add an import
+ * import dev.whyoleg.sweetspi.gradle.*
+ *
+ * dependencies {
+ *     implementation(sweetSpiRuntime())
+ * }
+ * ```
+ */
+public fun DependencyHandler.sweetSpiRuntime(): Dependency {
+    return create("dev.whyoleg.sweetspi:sweetspi-runtime:${SweetSpiProperties.version}")
+}
+
+
+/**
+ * This method returns a dependency object for the `sweetspi-runtime` which can be used to manually add dependency on it.
+ * The version of the library is determined by the version of the plugin
+ * This function is applicable for projects with `kotlin-multiplatform` plugin.
+ *
+ * Usage:
+ * ```
+ * // in build.gradle.kts
+ *
+ * // don't forget to add an import
+ * import dev.whyoleg.sweetspi.gradle.*
+ *
+ * kotlin {
+ *     sourceSets {
+ *         commonMain.dependencies {
+ *             implementation(sweetSpiRuntime())
+ *         }
+ *     }
+ * }
+ * ```
+ */
 public fun KotlinDependencyHandler.sweetSpiRuntime(): Dependency = project.dependencies.sweetSpiRuntime()
 
-public fun KotlinDependencyHandler.sweetSpiProcessor(): Dependency = project.dependencies.sweetSpiProcessor()
-
+/**
+ * Adds the sweet-spi runtime and KSP processor dependencies to the compilations of all targets.
+ *
+ * @param compilationFilter A lambda that determines whether dependencies should be added to a compilation.
+ *                          By default, only `main` compilations are affected
+ */
 public fun KotlinProjectExtension.withSweetSpi(
-    enabled: Boolean = true,
     compilationFilter: (KotlinCompilation<*>) -> Boolean = { it.name.endsWith("main", ignoreCase = true) },
 ) {
     when (this) {
-        is KotlinSingleTargetExtension<*> -> target.withSweetSpi(enabled, compilationFilter)
-        is KotlinMultiplatformExtension   -> targets.all { it.withSweetSpi(enabled, compilationFilter) }
+        is KotlinSingleTargetExtension<*> -> target.withSweetSpi(compilationFilter)
+        is KotlinMultiplatformExtension   -> targets.all { it.withSweetSpi(compilationFilter) }
     }
 }
 
+/**
+ * Adds the sweet-spi runtime and KSP processor dependencies to the compilations of this target.
+ *
+ * @param compilationFilter A lambda that determines whether dependencies should be added to a compilation.
+ *                          By default, only `main` compilations are affected
+ */
 public fun KotlinTarget.withSweetSpi(
-    enabled: Boolean = true,
     compilationFilter: (KotlinCompilation<*>) -> Boolean = { it.name.endsWith("main", ignoreCase = true) },
 ) {
     compilations.all {
-        if (compilationFilter(it)) it.withSweetSpi(enabled)
+        if (compilationFilter(it)) it.withSweetSpi()
     }
 }
 
-// TODO: support disabling
-public fun KotlinCompilation<*>.withSweetSpi(@Suppress("UNUSED_PARAMETER") enabled: Boolean = true) {
+/**
+ * Adds the sweet-spi runtime and KSP processor dependencies to the specified Kotlin compilation.
+ */
+public fun KotlinCompilation<*>.withSweetSpi() {
     val configurationName = getKotlinConfigurationName(this) ?: return
     project.dependencies.apply {
         add(configurationName, sweetSpiProcessor())

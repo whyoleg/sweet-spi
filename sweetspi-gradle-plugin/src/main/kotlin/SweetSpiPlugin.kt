@@ -7,6 +7,46 @@ package dev.whyoleg.sweetspi.gradle
 import org.gradle.api.*
 import org.gradle.api.logging.*
 
+/**
+ * By default, this plugin performs the following checks:
+ * - Ensures that the KSP (Kotlin Symbol Processing) Gradle Plugin is applied to your project.
+ * - Ensures that the sweet-spi KSP processor (`sweetspi-processor` artifact) is added to at least one of the KSP configurations.
+ *
+ * If any of these checks fail, appropriate error messages will be logged to help you resolve the issue.
+ *
+ * This behavior can be suppressed by setting the following Gradle property to `true`:
+ * - `dev.whyoleg.sweetspi.suppressGradleKspConfigurationChecker`
+ *
+ * Example of setting the property in `gradle.properties`:
+ * ```properties
+ * dev.whyoleg.sweetspi.suppressGradleKspConfigurationChecker=true
+ * ```
+ *
+ * To simplify configuration of sweet-spi in project, take a look on [withSweetSpi] APIs,
+ * which helps to add runtime and KSP processor dependencies to the appropriate configurations.
+ *
+ * Usage:
+ * To apply this plugin, add the following code to your build.gradle[.kts] file:
+ * ```
+ * // in build.gradle.kts
+ *
+ * // don't forget to add an import
+ * import dev.whyoleg.sweetspi.gradle.*
+ *
+ * plugins {
+ *     // jvm or multiplatform
+ *     kotlin("multiplatform")
+ *     // Make sure to also apply the KSP plugin
+ *     id("com.google.devtools.ksp")
+ *     id("dev.whyoleg.sweetspi")
+ * }
+ *
+ * kotlin {
+ *     withSweetSpi()
+ *     // declare kotlin targets
+ * }
+ * ```
+ */
 public abstract class SweetSpiPlugin : Plugin<Project> {
     private val logger = Logging.getLogger(SweetSpiPlugin::class.java)
 
