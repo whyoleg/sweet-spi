@@ -9,6 +9,7 @@ import sweetbuild.*
 plugins {
     id("sweetbuild.kotlin-base")
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.plugin.powerAssert)
 }
 
 kotlin {
