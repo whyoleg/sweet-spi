@@ -2,7 +2,10 @@
  * Copyright (c) 2024 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
+@file:Suppress("HasPlatformType", "UnstableApiUsage")
+
 import com.vanniktech.maven.publish.*
+import sweetbuild.*
 
 plugins {
     signing
@@ -47,3 +50,18 @@ mavenPublishing {
 // * signing is necessary for Maven Central only, and it will anyway validate that the signature is present;
 // * failure because of the absent signature will anyway fail only on CI during publishing release;
 signing.isRequired = false
+
+// Dev artifacts for tests publication - inspired by https://github.com/adamko-dev/dev-publish-plugin
+
+val devArtifactsDirectory = layout.buildDirectory.dir("maven-dev-artifacts")
+
+publishing.repositories.maven(devArtifactsDirectory) { name = "dev" }
+
+configurations.consumable("devArtifacts") {
+    devArtifactAttributes(objects)
+    outgoing {
+        artifact(devArtifactsDirectory) {
+            builtBy(tasks.named("publishAllPublicationsToDevRepository"))
+        }
+    }
+}
