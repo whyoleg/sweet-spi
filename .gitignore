@@ -12,4 +12,8 @@ classes
 build/
 *.log
 /local.properties
+/docs/runtime-api
+/docs/gradle-plugin-api
+/docs/README.md
+/docs/CHANGELOG.md
 /site

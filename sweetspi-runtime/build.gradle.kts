@@ -4,6 +4,7 @@
 
 import com.vanniktech.maven.publish.*
 import kotlinx.validation.*
+import org.jetbrains.dokka.gradle.*
 import org.jetbrains.kotlin.gradle.*
 import org.jetbrains.kotlin.gradle.targets.js.dsl.*
 
@@ -96,5 +97,16 @@ kotlin {
     // version enforcement using bom works only for jvm
     sourceSets.jvmMain.dependencies {
         api(project.dependencies.platform(projects.sweetspiBom))
+    }
+}
+
+tasks.withType<DokkaTask>().configureEach {
+    outputDirectory.set(rootDir.resolve("docs/runtime-api"))
+
+    dokkaSourceSets.configureEach {
+        perPackageOption {
+            suppress = true
+            matchingRegex = """.*\.internal.*"""
+        }
     }
 }

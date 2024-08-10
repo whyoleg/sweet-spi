@@ -2,6 +2,7 @@
  * Copyright (c) 2024 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
+import org.jetbrains.dokka.gradle.*
 import org.jetbrains.kotlin.gradle.dsl.*
 
 plugins {
@@ -55,4 +56,8 @@ tasks.processResources {
     filesMatching("sweetspi.properties") {
         expand("sweetspiVersion" to projectVersion)
     }
+}
+
+tasks.withType<DokkaTask>().configureEach {
+    outputDirectory.set(rootDir.resolve("docs/gradle-plugin-api"))
 }

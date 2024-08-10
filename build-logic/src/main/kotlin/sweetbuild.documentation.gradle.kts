@@ -3,31 +3,15 @@
  */
 
 import org.jetbrains.dokka.gradle.*
-import sweetbuild.*
 import java.net.*
 
 plugins {
     id("org.jetbrains.dokka")
 }
 
-val documentation = extensions.create<DocumentationExtension>("documentation").apply {
-    moduleName.convention(project.name)
-    includes.set("README.md")
-}
-
-tasks.register<Copy>("mkdocsCopy") {
-    onlyIf { documentation.includes.isPresent }
-    if (documentation.includes.isPresent) from(documentation.includes)
-    into(rootDir.resolve("docs/modules"))
-    rename { "${documentation.moduleName.get()}.md" }
-}
-
-tasks.withType<DokkaTaskPartial>().configureEach {
-    moduleName.set(documentation.moduleName)
-    suppressInheritedMembers.set(false)
+tasks.withType<DokkaTask>().configureEach {
     failOnWarning.set(true)
     dokkaSourceSets.configureEach {
-        if (documentation.includes.isPresent) includes.from(documentation.includes)
         reportUndocumented.set(false) // set true later
         sourceLink {
             localDirectory.set(rootDir)

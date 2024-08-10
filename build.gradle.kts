@@ -21,18 +21,14 @@ plugins.withType<NodeJsRootPlugin> {
     }
 }
 
-tasks.dokkaHtmlMultiModule {
-    outputDirectory.set(file("docs/api"))
-}
-
 tasks.register<Copy>("mkdocsCopy") {
     into(rootDir.resolve("docs"))
+    from("CHANGELOG.md")
     from("README.md")
 }
 
 tasks.register<Exec>("mkdocsBuild") {
-    dependsOn(tasks.dokkaHtmlMultiModule)
-    dependsOn(tasks.named("mkdocsCopy"))
-    dependsOn(subprojects.mapNotNull { it.tasks.findByName("mkdocsCopy") })
+    dependsOn(":sweetspi-runtime:dokkaHtml")
+    dependsOn(":sweetspi-gradle-plugin:dokkaHtml")
     commandLine("mkdocs", "build", "--clean", "--strict")
 }
