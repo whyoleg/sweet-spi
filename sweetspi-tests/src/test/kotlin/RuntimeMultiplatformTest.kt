@@ -60,6 +60,10 @@ class RuntimeMultiplatformTest : AbstractTest() {
     @Test
     fun testAllTargets() {
         val project = project {
+            prepend("build.gradle.kts") {
+                // for native tasks
+                "import org.jetbrains.kotlin.gradle.plugin.mpp.*"
+            }
             append("build.gradle.kts") {
                 """
                 kotlin {
@@ -78,6 +82,16 @@ class RuntimeMultiplatformTest : AbstractTest() {
                   androidNativeX64(); androidNativeX86(); androidNativeArm64(); androidNativeArm32()
                   
                   sourceSets.commonTest.dependencies { implementation(kotlin("test")) }
+                  
+                  // setup tests running in RELEASE mode
+                  targets.withType<KotlinNativeTarget>().configureEach {
+                      binaries.test(listOf(NativeBuildType.RELEASE))
+                  }
+                  targets.withType<KotlinNativeTargetWithTests<*>>().configureEach {
+                      testRuns.create("releaseTest") {
+                          setExecutionSourceFrom(binaries.getTest(NativeBuildType.RELEASE))
+                      }
+                  }
                 }
                 """.trimIndent()
             }
@@ -118,11 +132,19 @@ class RuntimeMultiplatformTest : AbstractTest() {
             assert(task(":wasmJsTest")!!.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE))
             assert(task(":wasmWasiTest")!!.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE))
 
-            // different tasks are on different OS
+            // tasks are different on different OS, only desktop targets are mentioned
+            val nativeTestTasks = setOf(
+                ":macosArm64Test",
+                ":macosX64Test",
+                ":linuxX64Test",
+                ":linuxArm64Test",
+                ":mingwX64Test",
+            )
             assert(
-                tasks.filter {
-                    it.path.startsWith(":macos") || it.path.startsWith(":linux") || it.path.startsWith(":mingw")
-                }.any { it.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE) }
+                tasks.any {
+                    it.path in nativeTestTasks &&
+                            it.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE)
+                }
             )
         }
     }

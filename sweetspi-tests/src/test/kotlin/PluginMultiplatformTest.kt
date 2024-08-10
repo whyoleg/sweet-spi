@@ -74,11 +74,19 @@ class PluginMultiplatformTest : AbstractTest() {
             }
         }
         project.gradleRunner("build").build().apply {
-            val kspTasks = tasks.filter { it.path.startsWith(":ksp") }
-            kspTasks.forEach { assert(it.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE)) }
-            // TODO: this will fail on windows/linux
-            // 24 targets + 1 common
-            assert(kspTasks.size == 25)
+            assert(task(":kspKotlinJvm")!!.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE))
+            assert(task(":kspKotlinJs")!!.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE))
+            assert(task(":kspKotlinWasmJs")!!.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE))
+            assert(task(":kspKotlinWasmWasi")!!.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE))
+
+            // tasks are different on different OS
+            assert(
+                tasks.filter {
+                    it.path.startsWith(":kspKotlinMacos") ||
+                            it.path.startsWith(":kspKotlinLinux") ||
+                            it.path.startsWith(":kspKotlinMingw")
+                }.any { it.outcome in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE) }
+            )
         }
     }
 }
