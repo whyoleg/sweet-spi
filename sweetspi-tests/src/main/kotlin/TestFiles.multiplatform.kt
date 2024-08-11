@@ -6,6 +6,8 @@ package dev.whyoleg.sweetspi.tests
 
 import org.intellij.lang.annotations.*
 
+const val MAIN = "main"
+const val TEST = "test"
 const val COMMON_MAIN = "commonMain"
 const val COMMON_TEST = "commonTest"
 const val JVM_MAIN = "jvmMain"
@@ -68,6 +70,16 @@ fun TestFiles.allTargets() {
     jvmTarget()
     webTargets()
     nativeTargets()
+}
+
+fun TestFiles.kotlinJvmTest() {
+    append(BUILD_GRADLE_KTS) {
+        """
+        dependencies {  
+            implementation(kotlin("test"))
+        }    
+        """.trimIndent()
+    }
 }
 
 fun TestFiles.kotlinTest(sourceSet: String) {

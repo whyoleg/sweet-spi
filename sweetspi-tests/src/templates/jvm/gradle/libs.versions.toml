@@ -1,0 +1,12 @@
+[versions]
+
+kotlin = "%KOTLIN_VERSION"
+ksp = "%KSP_VERSION"
+sweetspi = "%SWEETSPI_VERSION"
+
+[plugins]
+
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+sweetspi = { id = "dev.whyoleg.sweetspi", version.ref = "sweetspi" }
