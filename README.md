@@ -1,7 +1,5 @@
 # sweet-spi
 
-> Note: the project is not yet published to Maven Central
-
 Simple SPI (Service Provider Interface) for Kotlin Multiplatform (equivalent of JVM's Service Loader)
 
 ```kotlin
@@ -43,14 +41,14 @@ Documentation can be found here, or on the website:
 
 ## Features
 
-- Easy-to-use SPI with just two annotations and one object
+- Easy-to-use SPI with just two annotations and two functions
 - No additional setup is necessary for consumers, except for depending on your library, of course
 - Automatic loading of service providers from any module or library which is available at runtime
 - Automatic discovery of services based on the declaration type
 - Support for providing services via objects, properties, and no-arg functions
 - Support tor providing multiple services via one declaration
 - Ability to explicitly specify which services should be provided by the specific service provider
-- Strict spe
+- Strict identification about which interfaces could be loaded
 - Supports both kotlin-jvm and kotlin-multiplatform plugins (android plugins support will be added later, not tested now, so may even work)
 
 ## Using in your projects

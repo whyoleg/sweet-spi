@@ -2,4 +2,4 @@
 
 ## 0.1.0 — First release
 
-> Not published yet
+> Published 11 Aug 2024
