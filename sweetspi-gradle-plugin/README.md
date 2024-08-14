@@ -43,7 +43,7 @@ plugins {
     // apply KSP, don't worry, Gradle Plugin will warn if you've forgotten 
     id("com.google.devtools.ksp") version "2.0.0-1.0.24"
     // finally, apply `sweetspi` Gradle Plugin 
-    id("dev.whyoleg.sweetspi") version "0.1.0"
+    id("dev.whyoleg.sweetspi") version "0.1.1"
 }
 
 kotlin {
