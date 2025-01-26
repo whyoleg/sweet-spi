@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright (c) 2024-2025 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
 import sweetsettings.*
@@ -22,5 +22,5 @@ projects("sweet-spi") {
     module("sweetspi-runtime")
     module("sweetspi-processor")
     module("sweetspi-gradle-plugin")
-    module("sweetspi-tests")
+    module("sweetspi-tests-it")
 }
