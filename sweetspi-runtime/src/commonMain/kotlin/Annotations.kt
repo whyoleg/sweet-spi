@@ -23,7 +23,7 @@ import kotlin.reflect.*
  */
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.BINARY)
+@Retention(AnnotationRetention.RUNTIME)
 public annotation class Service
 
 /**
@@ -54,7 +54,7 @@ public annotation class ServiceProvider(public vararg val services: KClass<*>)
 // if the annotation is present, then there will be restrictions on how it could be used by ServiceProvider
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.BINARY)
+@Retention(AnnotationRetention.RUNTIME)
 public annotation class JvmService
 
 // to be interoperable with the jvm service loader
