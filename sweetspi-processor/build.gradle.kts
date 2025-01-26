@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright (c) 2024-2025 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
 import com.vanniktech.maven.publish.*
@@ -19,6 +19,4 @@ mavenPublishing {
 dependencies {
     compileOnly(libs.ksp.api)
     implementation(libs.kotlinpoet.ksp)
-
-    api(project.dependencies.platform(projects.sweetspiBom))
 }

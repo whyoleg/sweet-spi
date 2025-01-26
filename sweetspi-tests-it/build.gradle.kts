@@ -35,7 +35,6 @@ val devArtifactsResolver by configurations.resolvable("devArtifactsResolver") {
 }
 
 dependencies {
-    devArtifacts(projects.sweetspiBom)
     devArtifacts(projects.sweetspiRuntime)
     devArtifacts(projects.sweetspiProcessor)
     devArtifacts(projects.sweetspiGradlePlugin)

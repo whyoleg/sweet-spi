@@ -14,11 +14,6 @@ plugins {
 }
 
 projects("sweet-spi") {
-    // build-tools modules
-    module("sweetspi-bom")
-    module("sweetspi-version-catalog")
-
-    // API
     module("sweetspi-runtime")
     module("sweetspi-processor")
     module("sweetspi-gradle-plugin")
