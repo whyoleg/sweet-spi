@@ -16,6 +16,7 @@ plugins {
     id("sweetbuild.documentation")
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlinx.bcv)
+    alias(libs.plugins.kotlinx.atomicfu)
 }
 
 description = "sweet-spi runtime API"
@@ -73,25 +74,13 @@ kotlin {
     androidNativeArm64()
     androidNativeArm32()
 
-    compilerOptions {
-        freeCompilerArgs.add("-Xexpect-actual-classes")
-    }
-
     applyDefaultHierarchyTemplate {
         common {
             group("nonJvm") {
-                group("jsAndWasmShared") {
-                    withJs()
-                    withWasmJs()
-                    withWasmWasi()
-                }
-                // mutex native API isn't commonized properly, so we need to define additional source sets to overcome it
-                group("native") {
-                    group("nix") {
-                        group("linux")
-                        group("apple")
-                    }
-                }
+                withJs()
+                withWasmJs()
+                withWasmWasi()
+                group("native")
             }
         }
     }
@@ -107,11 +96,4 @@ plugins.withType<NodeJsRootPlugin> {
 
 tasks.withType<DokkaTask>().configureEach {
     outputDirectory.set(rootDir.resolve("../docs/runtime-api"))
-
-    dokkaSourceSets.configureEach {
-        perPackageOption {
-            suppress = true
-            matchingRegex = """.*\.internal.*"""
-        }
-    }
 }

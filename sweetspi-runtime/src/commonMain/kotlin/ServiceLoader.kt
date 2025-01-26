@@ -1,60 +1,10 @@
 /*
- * Copyright (c) 2024 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright (c) 2024-2025 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
-
-@file:Suppress("PackageDirectoryMismatch")
 
 package dev.whyoleg.sweetspi
 
-import dev.whyoleg.sweetspi.internal.*
-import kotlin.jvm.*
 import kotlin.reflect.*
-
-/**
- * This annotation is used to indicate that a class is a service which could be provided via [ServiceLoader.load]
- *
- * Implementations of these services are identified by [ServiceProvider] annotation.
- *
- * This annotation could be applied only to **interfaces** or **abstract classes**.
- *
- * Usage:
- * ```
- * @Service
- * interface SimpleService {
- *     fun saySomethingSweet()
- * }
- * ```
- */
-@MustBeDocumented
-@Target(AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.BINARY)
-public annotation class Service
-
-/**
- * This annotation is used to identify which service(s) the annotated element provides an instance for.
- *
- * If no [services] are explicitly provided, the plugin will attempt to find all supertypes of the element
- * that have the [Service] annotation.
- *
- * This annotation can be applied to the following targets:
- * - [AnnotationTarget.CLASS]: Only applicable to objects
- * - [AnnotationTarget.PROPERTY]: Only applicable to immutable non-suspend properties with getter or initializer
- * - [AnnotationTarget.FUNCTION]: Only applicable to non-suspend functions without arguments and without receiver
- *
- * Usage:
- * ```
- * @ServiceProvider(SimpleService::class)
- * object SimpleServiceImpl : SimpleService {
- *     override fun saySomethingSweet() { ... }
- * }
- * ```
- */
-@MustBeDocumented
-@Target(AnnotationTarget.CLASS, AnnotationTarget.PROPERTY, AnnotationTarget.FUNCTION)
-@Retention(AnnotationRetention.BINARY)
-public annotation class ServiceProvider(
-    public vararg val services: KClass<*>,
-)
 
 /**
  * Provides functionality for dynamically loading service implementations using the Service Provider Interface (SPI) mechanism.
@@ -81,24 +31,99 @@ public annotation class ServiceProvider(
  *
  * // module: A, B, C or may be not even in your codebase...
  * fun main() {
- *     ServiceLoader.load<SimpleService>().forEach { service ->
+ *     ServiceLoader.loadAll<SimpleService>().forEach { service ->
  *         service.saySomethingSweet()
  *     }
  * }
  * ```
  */
-public object ServiceLoader {
-    /**
-     * Retrieves a list of services of the specified type [T], which must be annotated with [Service].
-     * Providers of these services must be annotated with [ServiceProvider].
-     */
-    @JvmStatic
-    @OptIn(InternalSweetSpiApi::class)
-    public fun <T : Any> load(cls: KClass<T>): List<T> = internalServiceLoader.value.load(cls)
+public interface ServiceLoader {
+    public fun <T : Any> load(cls: KClass<T>): Sequence<T>
 
-    /**
-     * Retrieves a list of services of the specified type [T], which must be annotated with [Service].
-     * Providers of these services must be annotated with [ServiceProvider].
-     */
-    public inline fun <reified T : Any> load(): List<T> = load(T::class)
+    public fun <T : Any> loadAll(cls: KClass<T>): List<T> = load(cls).toList()
+    public fun <T : Any> loadFirst(cls: KClass<T>): T = load(cls).first()
+    public fun <T : Any> loadFirstOrNull(cls: KClass<T>): T? = load(cls).firstOrNull()
+    public fun <T : Any> loadSingle(cls: KClass<T>): T = load(cls).single()
+    public fun <T : Any> loadSingleOrNull(cls: KClass<T>): T? = load(cls).singleOrNull()
+
+    // intrinsic candidates on JVM (may be just `reified` calls)
+    // it should work even without CP, but could be slower
+    // CP should validate that the class is annotated with `@Service`?
+    public companion object Default : ServiceLoader {
+        override fun <T : Any> load(cls: KClass<T>): Sequence<T> = DefaultServiceLoader.load(cls)
+
+        override fun <T : Any> loadAll(cls: KClass<T>): List<T> = DefaultServiceLoader.loadAll(cls)
+        override fun <T : Any> loadFirst(cls: KClass<T>): T = DefaultServiceLoader.loadFirst(cls)
+        override fun <T : Any> loadFirstOrNull(cls: KClass<T>): T? = DefaultServiceLoader.loadFirstOrNull(cls)
+        override fun <T : Any> loadSingle(cls: KClass<T>): T = DefaultServiceLoader.loadSingle(cls)
+        override fun <T : Any> loadSingleOrNull(cls: KClass<T>): T? = DefaultServiceLoader.loadSingleOrNull(cls)
+
+        public inline fun <reified T : Any> load(): Sequence<T> = load(T::class)
+
+        public inline fun <reified T : Any> loadAll(): List<T> = loadAll(T::class)
+        public inline fun <reified T : Any> loadFirst(): T = loadFirst(T::class)
+        public inline fun <reified T : Any> loadFirstOrNull(): T? = loadFirstOrNull(T::class)
+        public inline fun <reified T : Any> loadSingle(): T = loadSingle(T::class)
+        public inline fun <reified T : Any> loadSingleOrNull(): T? = loadSingleOrNull(T::class)
+    }
 }
+
+public inline fun <reified T : Any> ServiceLoader.load(): Sequence<T> = load(T::class)
+
+public inline fun <reified T : Any> ServiceLoader.loadAll(): List<T> = loadAll(T::class)
+public inline fun <reified T : Any> ServiceLoader.loadFirst(): T = loadFirst(T::class)
+public inline fun <reified T : Any> ServiceLoader.loadFirstOrNull(): T? = loadFirstOrNull(T::class)
+public inline fun <reified T : Any> ServiceLoader.loadSingle(): T = loadSingle(T::class)
+public inline fun <reified T : Any> ServiceLoader.loadSingleOrNull(): T? = loadSingleOrNull(T::class)
+
+internal expect val DefaultServiceLoader: ServiceLoader
+
+// ServiceLoader should use specific call convention to be optimized by R8 on Android:
+// `ServiceLoader.load(X.class, X.class.getClassLoader()).iterator()`
+// source:
+// https://r8.googlesource.com/r8/+/refs/heads/main/src/main/java/com/android/tools/r8/ir/optimize/ServiceLoaderRewriter.java
+// JVM intrinsic should generate for `X`
+//public interface X
+//@PublishedApi internal interface X_Provider {
+//    public fun get(): X
+//}
+//
+//// for @JvmService
+//private fun generated() {
+//    Sequence {
+//        JServiceLoader.load(X::class.java, X::class.java.classLoader).iterator()
+//    }
+//}
+//
+//// @Service
+//private fun generatedProvider() {
+//    Sequence {
+//        JServiceLoader.load(X_Provider::class.java, X_Provider::class.java.classLoader).iterator()
+//    }.map { it.get() }
+//}
+
+// for klib:
+//@ServiceInfo
+//public annotation class Priority(val value: Int)
+//
+//public interface LoggerFactory
+//
+//@Priority(123)
+//public object LoggerFactoryImpl : LoggerFactory
+//
+//// generated
+//@OptIn(InternalSweetSpiApi::class)
+//private val init = with(InternalServiceLoader) {
+//    registerService(LoggerFactory::class) // for validation
+//    registerInitializer(LoggerFactory::class, LoggerFactoryImpl_Initializer) // for initialization
+//}
+
+//// generated
+//private val LoggerFactory$init = InternalServiceRegistry.registerService(LoggerFactory::class) // for validation
+//private val LoggerFactoryImpl$init = InternalServiceRegistry.registerInitializer(LoggerFactory::class) { LoggerFactoryImpl }  // for initialization
+//
+//// generated
+//private object LoggerFactoryImpl_Initializer : ServiceInitializer<LoggerFactory> {
+//    override val annotations: List<Annotation> get() = listOf(Priority(123))
+//    override fun initialize(): LoggerFactory = LoggerFactoryImpl
+//}
