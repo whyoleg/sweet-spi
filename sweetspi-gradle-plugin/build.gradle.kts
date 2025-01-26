@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright (c) 2024-2025 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
 import org.jetbrains.dokka.gradle.*
@@ -32,8 +32,6 @@ dependencies {
     // TODO: remove `stdlib`
     compileOnly(libs.kotlin.gradle.plugin)
     compileOnly(libs.ksp.gradle.plugin)
-
-    api(project.dependencies.platform(projects.sweetspiBom))
 }
 
 @Suppress("UnstableApiUsage")
