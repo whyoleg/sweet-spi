@@ -7,6 +7,8 @@ import kotlinx.validation.*
 import org.jetbrains.dokka.gradle.*
 import org.jetbrains.kotlin.gradle.*
 import org.jetbrains.kotlin.gradle.targets.js.dsl.*
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.*
+import org.jetbrains.kotlin.gradle.targets.js.npm.*
 
 plugins {
     id("sweetbuild.kotlin")
@@ -95,8 +97,16 @@ kotlin {
     }
 }
 
+plugins.withType<NodeJsRootPlugin> {
+    // ignore package lock
+    extensions.configure<NpmExtension> {
+        lockFileDirectory.set(layout.buildDirectory.dir("kotlin-js-store"))
+        packageLockMismatchReport.set(LockFileMismatchReport.NONE)
+    }
+}
+
 tasks.withType<DokkaTask>().configureEach {
-    outputDirectory.set(rootDir.resolve("docs/runtime-api"))
+    outputDirectory.set(rootDir.resolve("../docs/runtime-api"))
 
     dokkaSourceSets.configureEach {
         perPackageOption {
