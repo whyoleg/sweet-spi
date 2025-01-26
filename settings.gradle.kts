@@ -15,3 +15,4 @@ rootProject.name = "sweet-spi"
 
 includeBuild("sweetspi-runtime")
 includeBuild("sweetspi-compiler-plugin")
+includeBuild("sweetspi-gradle-plugin")

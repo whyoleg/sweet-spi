@@ -20,7 +20,7 @@ description = "sweet-spi Gradle plugin"
 kotlin {
     explicitApi()
     compilerOptions {
-        // gradle 8+
+        // TODO: make it compatible with earlier Gradle versions?
         languageVersion.set(KotlinVersion.KOTLIN_1_8)
         apiVersion.set(KotlinVersion.KOTLIN_1_8)
         // progressiveMode works only for latest kotlin version
@@ -29,9 +29,8 @@ kotlin {
 }
 
 dependencies {
-    // TODO: remove `stdlib`
-    compileOnly(libs.kotlin.gradle.plugin)
-    compileOnly(libs.ksp.gradle.plugin)
+    compileOnly(kotlin("stdlib"))
+    compileOnly(kotlin("gradle-plugin"))
 }
 
 @Suppress("UnstableApiUsage")
