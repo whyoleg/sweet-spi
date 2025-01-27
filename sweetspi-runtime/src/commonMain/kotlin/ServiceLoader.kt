@@ -87,6 +87,10 @@ internal expect val DefaultServiceLoader: ServiceLoader
 //@PublishedApi internal interface X_Provider {
 //    public fun get(): X
 //}
+//object XImpl: X
+//class XImpl_Provider: X_Provider {
+// override fun invoke(): X = XImpl
+//}
 //
 //// for @JvmService
 //private fun generated() {

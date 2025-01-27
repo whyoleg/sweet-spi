@@ -31,6 +31,7 @@ private abstract class AbstractServiceLoader : ServiceLoader {
     protected abstract fun <T : Any> load(cls: Class<T>): JServiceLoader<T>
 
     // TODO: re-validate after JvmService/JvmServiceProvider support
+    // TODO: re-validate regarding when to throw an error / when to call load (lazy or eager)
     final override fun <T : Any> load(cls: KClass<T>): Sequence<T> {
         val serviceCls = cls.java
         if (!serviceCls.isAnnotationPresent(Service::class.java)) {
@@ -39,6 +40,7 @@ private abstract class AbstractServiceLoader : ServiceLoader {
         return if (serviceCls.isAnnotationPresent(JvmService::class.java)) {
             Sequence { load(serviceCls).iterator() }
         } else {
+            // load provider class eagerly to ensure we can run service loader?
             val providerCls = providerCls(serviceCls)
             Sequence { load(providerCls).iterator() }.map { it.invoke() }
         }
