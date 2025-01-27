@@ -16,6 +16,11 @@ class SweetCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
     override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
         FirExtensionRegistrarAdapter.registerExtension(SweetFirExtensionRegistrar())
-        IrGenerationExtension.registerExtension(SweetIrGenerationExtension(configuration.irMessageLogger))
+        IrGenerationExtension.registerExtension(
+            SweetIrGenerationExtension(
+                configuration.irMessageLogger,
+                configuration.getNotNull(SweetConfigurationKeys.RESOURCES_PATH)
+            )
+        )
     }
 }
