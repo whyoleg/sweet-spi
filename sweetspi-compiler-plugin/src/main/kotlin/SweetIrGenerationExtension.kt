@@ -17,6 +17,8 @@ import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.name.*
 import org.jetbrains.kotlin.platform.jvm.*
+import java.nio.file.*
+import kotlin.io.path.*
 
 private val SweetOrigin: IrDeclarationOrigin = IrDeclarationOriginImpl("SWEET_SPI")
 
@@ -38,6 +40,7 @@ private val SweetOrigin: IrDeclarationOrigin = IrDeclarationOriginImpl("SWEET_SP
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 class SweetIrGenerationExtension(
     private val logger: IrMessageLogger,
+    private val resourcesPath: Path,
 ) : IrGenerationExtension {
 
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
@@ -60,16 +63,11 @@ class SweetIrGenerationExtension(
         }.associateBy(IrClass::classIdOrFail) // should be called ONLY after `addChild`
 
         // handle @ServiceProvider
-        moduleFragment.files.forEach { file ->
+        val serviceProviders = moduleFragment.files.flatMap { file ->
             file.declarations.flatMap { declaration ->
                 val serviceTypes = findDeclaredServiceTypes(declaration)
                     ?.ifEmpty { resolveServiceTypes(declaration) }
                     ?: return@flatMap emptyList()
-
-//                messageCollector.report(
-//                    CompilerMessageSeverity.WARNING,
-//                    "$declaration: ${serviceTypes.joinToString { it.classFqName!!.asString() }}"
-//                )
 
                 // TODO: add checkers for invalid combinations
                 when (declaration) {
@@ -102,7 +100,17 @@ class SweetIrGenerationExtension(
                     }
                     else                -> emptyList()
                 }
-            }.forEach(file::addChild)
+            }.onEach(file::addChild)
+        }.groupBy { it.superTypes.single() }
+
+        // drop all resources first
+        resourcesPath.toFile().deleteRecursively()
+        serviceProviders.forEach { (superType, providers) ->
+            resourcesPath.resolve(
+                "META-INF/services/${superType.classOrFail.owner.kotlinFqName.asString()}"
+            ).createParentDirectories().writeText(
+                providers.joinToString("\n") { it.kotlinFqName.asString() }
+            )
         }
     }
 

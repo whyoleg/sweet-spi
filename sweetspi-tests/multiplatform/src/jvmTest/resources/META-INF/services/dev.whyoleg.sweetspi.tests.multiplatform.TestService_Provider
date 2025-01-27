@@ -1,7 +1,0 @@
-#
-# Copyright (c) 2025 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
-#
-
-dev.whyoleg.sweetspi.tests.multiplatform.TestServiceImpl_Provider
-dev.whyoleg.sweetspi.tests.multiplatform.testServiceImplFunction_Provider
-dev.whyoleg.sweetspi.tests.multiplatform.testServiceImplProperty_Provider
