@@ -22,5 +22,6 @@ class SweetCompilerPluginRegistrar : CompilerPluginRegistrar() {
                 configuration.getNotNull(SweetConfigurationKeys.RESOURCES_PATH)
             )
         )
+        IrGenerationExtension.registerExtension(KlibSweetIrGenerationExtension(configuration.irMessageLogger))
     }
 }
