@@ -50,6 +50,7 @@ public annotation class Service
 @Retention(AnnotationRetention.BINARY)
 public annotation class ServiceProvider(public vararg val services: KClass<*>)
 
+// TODO: for JVM allow to explicitly pass class which will be used as a service provider
 // TODO: implement JVM interop (find better names)
 // if the annotation is present, then there will be restrictions on how it could be used by ServiceProvider
 @MustBeDocumented
