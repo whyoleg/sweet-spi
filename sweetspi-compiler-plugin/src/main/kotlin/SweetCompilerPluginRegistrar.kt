@@ -4,10 +4,10 @@
 
 package dev.whyoleg.sweetspi.compiler
 
+import dev.whyoleg.sweetspi.compiler.ir.*
 import org.jetbrains.kotlin.backend.common.extensions.*
 import org.jetbrains.kotlin.compiler.plugin.*
 import org.jetbrains.kotlin.config.*
-import org.jetbrains.kotlin.fir.extensions.*
 import org.jetbrains.kotlin.ir.util.*
 
 @OptIn(ExperimentalCompilerApi::class)
@@ -15,13 +15,23 @@ class SweetCompilerPluginRegistrar : CompilerPluginRegistrar() {
     override val supportsK2: Boolean get() = true
 
     override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
-        FirExtensionRegistrarAdapter.registerExtension(SweetFirExtensionRegistrar())
+        //FirExtensionRegistrarAdapter.registerExtension(SweetFirExtensionRegistrar())
         IrGenerationExtension.registerExtension(
             SweetIrGenerationExtension(
-                configuration.irMessageLogger,
-                configuration.getNotNull(SweetConfigurationKeys.RESOURCES_PATH)
+                logger = configuration.irMessageLogger,
+                resourcesPath = configuration.getNotNull(SweetConfigurationKeys.RESOURCES_PATH)
             )
         )
-        IrGenerationExtension.registerExtension(KlibSweetIrGenerationExtension(configuration.irMessageLogger))
+        IrGenerationExtension.registerExtension(
+            JvmSweetIrGenerationExtension(
+                logger = configuration.irMessageLogger,
+                resourcesPath = configuration.getNotNull(SweetConfigurationKeys.RESOURCES_PATH)
+            )
+        )
+        IrGenerationExtension.registerExtension(
+            KlibSweetIrGenerationExtension(
+                logger = configuration.irMessageLogger
+            )
+        )
     }
 }

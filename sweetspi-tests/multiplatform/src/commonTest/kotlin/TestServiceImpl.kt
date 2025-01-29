@@ -4,15 +4,14 @@
 
 package dev.whyoleg.sweetspi.tests.multiplatform
 
-import dev.whyoleg.sweetspi.*
-
-@ServiceProvider
+//@ServiceProvider
 object TestServiceImpl : TestService {
     override fun value(): String = "object"
 }
 
-@ServiceProvider
-fun testServiceImplFunction(): TestService = TestServiceImpl
+//@ServiceProvider
+//fun testServiceImplFunction(): TestService = TestServiceImpl
+//
+//@ServiceProvider
+//val testServiceImplProperty: TestService get() = TestServiceImpl
 
-@ServiceProvider
-val testServiceImplProperty: TestService get() = TestServiceImpl

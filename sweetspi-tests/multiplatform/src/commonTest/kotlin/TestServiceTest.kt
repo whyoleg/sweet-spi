@@ -15,4 +15,16 @@ class TestServiceTest {
         assertEquals(1, services.distinct().size)
         assertEquals("object", services.first().value())
     }
+
+    @Test
+    fun testMulti() {
+
+
+        val first = ServiceLoader.loadAll<FirstService>()
+        val second = ServiceLoader.loadAll<SecondService>()
+        assertEquals(1, first.size)
+        assertEquals(1, second.size)
+        assertEquals(MultiServiceImpl, first.first())
+        assertEquals(MultiServiceImpl, second.first())
+    }
 }

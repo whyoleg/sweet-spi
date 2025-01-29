@@ -41,13 +41,13 @@ private abstract class AbstractServiceLoader : ServiceLoader {
             Sequence { load(serviceCls).iterator() }
         } else {
             // load provider class eagerly to ensure we can run service loader?
-            val providerCls = providerCls(serviceCls)
-            Sequence { load(providerCls).iterator() }.map { it.invoke() }
+            val wrapperCls = wrapperCls(serviceCls)
+            Sequence { load(wrapperCls).iterator() }.map { it.invoke() }
         }
     }
 
-    private fun <T : Any> providerCls(serviceCls: Class<T>): Class<() -> T> {
-        val providerClassName = serviceCls.name + "_Provider"
+    private fun <T : Any> wrapperCls(serviceCls: Class<T>): Class<() -> T> {
+        val providerClassName = serviceCls.name + "\$Wrapper"
         val providerCls = requireNotNull(
             Class.forName(providerClassName, true, serviceCls.classLoader)
         ) {

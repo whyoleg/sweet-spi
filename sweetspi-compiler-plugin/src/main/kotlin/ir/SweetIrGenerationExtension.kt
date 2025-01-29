@@ -2,8 +2,9 @@
  * Copyright (c) 2025 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package dev.whyoleg.sweetspi.compiler
+package dev.whyoleg.sweetspi.compiler.ir
 
+import dev.whyoleg.sweetspi.compiler.common.*
 import org.jetbrains.kotlin.backend.common.extensions.*
 import org.jetbrains.kotlin.backend.common.lower.*
 import org.jetbrains.kotlin.descriptors.*
@@ -17,7 +18,9 @@ import org.jetbrains.kotlin.ir.symbols.*
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.name.*
+import org.jetbrains.kotlin.platform.*
 import org.jetbrains.kotlin.platform.jvm.*
+import org.jetbrains.kotlin.platform.konan.*
 import java.nio.file.*
 import kotlin.io.path.*
 
@@ -38,8 +41,32 @@ private val SweetOrigin: IrDeclarationOrigin = IrDeclarationOriginImpl("SWEET_SP
 // jvm:
 // - if annotated -> generate a lot of different things :)
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 class SweetIrGenerationExtension(
+    private val logger: IrMessageLogger,
+    private val resourcesPath: Path,
+) : IrGenerationExtension {
+    override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
+        val platform = pluginContext.platform
+
+        when {
+            platform.isJvm()    -> {
+
+            }
+            platform.isNative() -> {
+
+            }
+            platform.isWasm()   -> {
+
+            }
+            platform.isJs()     -> {
+
+            }
+        }
+    }
+}
+
+@OptIn(UnsafeDuringIrConstructionAPI::class)
+class JvmSweetIrGenerationExtension(
     private val logger: IrMessageLogger,
     private val resourcesPath: Path,
 ) : IrGenerationExtension {
@@ -47,6 +74,7 @@ class SweetIrGenerationExtension(
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         if (!pluginContext.platform.isJvm()) return
         // generate based on service/serviceProvider based on platform
+
 
         // TODO: lazy, needed for jvm only
         //  create custom pluginContext?
@@ -98,7 +126,7 @@ class SweetIrGenerationExtension(
         kind = ClassKind.INTERFACE
         modality = Modality.ABSTRACT
         visibility = DescriptorVisibilities.INTERNAL
-        name = Name.identifier("${declaration.name.identifier}_Provider")
+        name = Name.identifier("${declaration.name.identifier}\$Wrapper")
     }.apply {
         createParameterDeclarations()
         superTypes += pluginContext.irBuiltIns.functionN(0).typeWith(declaration.defaultType)
@@ -115,12 +143,11 @@ class SweetIrGenerationExtension(
             origin = SweetOrigin
             kind = ClassKind.CLASS
             visibility = DescriptorVisibilities.INTERNAL
-            name = Name.identifier("${declaration.name.identifier}_Provider")
+            name = Name.identifier("${declaration.name.identifier}\$Wrapper")
         }.apply {
             createParameterDeclarations()
-            val serviceId = ClassId.topLevel(FqName(serviceType.classFqName!!.asString() + "_Provider"))
-            superTypes += (services[serviceId]?.symbol ?: pluginContext.referenceClass(serviceId)
-            ?: error("TBD: $serviceId")).defaultType
+            val serviceId = ClassId.topLevel(FqName(serviceType.classFqName!!.asString() + "\$Wrapper"))
+            superTypes += (services[serviceId]?.symbol ?: pluginContext.referenceClass(serviceId) ?: error("TBD: $serviceId")).defaultType
             // empty constructor
             addConstructor { isPrimary = true }.apply {
                 val constructor = pluginContext.irBuiltIns.anyClass.owner.constructors.single()
@@ -192,7 +219,7 @@ class KlibSweetIrGenerationExtension(
 ) : IrGenerationExtension {
 
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
-        if (pluginContext.platform.isJvm()) return
+        if (!pluginContext.platform.isNative()) return
 
         val eagerInitAnnotation by lazy {
             pluginContext.referenceConstructors(ClassId.topLevel(FqName("kotlin.native.EagerInitialization"))).single()
@@ -210,7 +237,7 @@ class KlibSweetIrGenerationExtension(
                 if (declaration is IrClass && declaration.hasAnnotation(SweetClassIds.Service)) {
                     pluginContext.irFactory.buildProperty {
                         origin = SweetOrigin
-                        name = Name.identifier("${declaration.name.identifier}_Provider")
+                        name = Name.identifier("registerService\$${declaration.name.identifier}")
                         // TODO: public on js
                         visibility = DescriptorVisibilities.PRIVATE
                     }.apply {
@@ -247,7 +274,7 @@ class KlibSweetIrGenerationExtension(
                 serviceTypes.map { serviceType ->
                     pluginContext.irFactory.buildProperty {
                         origin = SweetOrigin
-                        name = Name.identifier("${declaration.name.identifier}_Provider")
+                        name = Name.identifier("registerServiceProvider\$${declaration.name.identifier}")
                         // TODO: public on js
                         visibility = DescriptorVisibilities.PRIVATE
                     }.apply {
