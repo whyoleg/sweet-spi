@@ -11,3 +11,8 @@ public interface ServiceRegistry : ServiceLoader {
     public fun <T : Any> registerService(cls: KClass<T>)
     public fun <T : Any> registerServiceProvider(cls: KClass<T>, provider: () -> T)
 }
+
+public inline fun <reified T : Any> ServiceRegistry.registerService(): Unit = registerService(T::class)
+
+public inline fun <reified T : Any> ServiceRegistry.registerServiceProvider(noinline provider: () -> T): Unit =
+    registerServiceProvider(T::class, provider)

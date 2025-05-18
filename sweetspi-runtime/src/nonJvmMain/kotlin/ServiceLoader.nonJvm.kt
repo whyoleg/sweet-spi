@@ -29,7 +29,7 @@ public object InternalServiceRegistry : ServiceRegistry, SynchronizedObject() {
         serviceProviders.getOrPut(cls, ::mutableListOf) += provider
     }
 
-    override fun <T : Any> load(cls: KClass<T>): Sequence<T> {
+    override fun <T : Any> loadServices(cls: KClass<T>): Sequence<T> {
         if (!initialized) synchronized(this) { initialized = true }
 
         require(cls in services) { "Service `${cls.simpleName}` wasn't registered" }

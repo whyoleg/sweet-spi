@@ -38,43 +38,18 @@ import kotlin.reflect.*
  * ```
  */
 public interface ServiceLoader {
-    public fun <T : Any> load(cls: KClass<T>): Sequence<T>
-
-    public fun <T : Any> loadAll(cls: KClass<T>): List<T> = load(cls).toList()
-    public fun <T : Any> loadFirst(cls: KClass<T>): T = load(cls).first()
-    public fun <T : Any> loadFirstOrNull(cls: KClass<T>): T? = load(cls).firstOrNull()
-    public fun <T : Any> loadSingle(cls: KClass<T>): T = load(cls).single()
-    public fun <T : Any> loadSingleOrNull(cls: KClass<T>): T? = load(cls).singleOrNull()
+    public fun <T : Any> loadServices(cls: KClass<T>): Sequence<T>
 
     // intrinsic candidates on JVM (may be just `reified` calls)
     // it should work even without CP, but could be slower
     // CP should validate that the class is annotated with `@Service`?
     public companion object Default : ServiceLoader {
-        override fun <T : Any> load(cls: KClass<T>): Sequence<T> = DefaultServiceLoader.load(cls)
-
-        override fun <T : Any> loadAll(cls: KClass<T>): List<T> = DefaultServiceLoader.loadAll(cls)
-        override fun <T : Any> loadFirst(cls: KClass<T>): T = DefaultServiceLoader.loadFirst(cls)
-        override fun <T : Any> loadFirstOrNull(cls: KClass<T>): T? = DefaultServiceLoader.loadFirstOrNull(cls)
-        override fun <T : Any> loadSingle(cls: KClass<T>): T = DefaultServiceLoader.loadSingle(cls)
-        override fun <T : Any> loadSingleOrNull(cls: KClass<T>): T? = DefaultServiceLoader.loadSingleOrNull(cls)
-
-        public inline fun <reified T : Any> load(): Sequence<T> = load(T::class)
-
-        public inline fun <reified T : Any> loadAll(): List<T> = loadAll(T::class)
-        public inline fun <reified T : Any> loadFirst(): T = loadFirst(T::class)
-        public inline fun <reified T : Any> loadFirstOrNull(): T? = loadFirstOrNull(T::class)
-        public inline fun <reified T : Any> loadSingle(): T = loadSingle(T::class)
-        public inline fun <reified T : Any> loadSingleOrNull(): T? = loadSingleOrNull(T::class)
+        override fun <T : Any> loadServices(cls: KClass<T>): Sequence<T> = DefaultServiceLoader.loadServices(cls)
+        public inline fun <reified T : Any> loadServices(): Sequence<T> = loadServices(T::class)
     }
 }
 
-public inline fun <reified T : Any> ServiceLoader.load(): Sequence<T> = load(T::class)
-
-public inline fun <reified T : Any> ServiceLoader.loadAll(): List<T> = loadAll(T::class)
-public inline fun <reified T : Any> ServiceLoader.loadFirst(): T = loadFirst(T::class)
-public inline fun <reified T : Any> ServiceLoader.loadFirstOrNull(): T? = loadFirstOrNull(T::class)
-public inline fun <reified T : Any> ServiceLoader.loadSingle(): T = loadSingle(T::class)
-public inline fun <reified T : Any> ServiceLoader.loadSingleOrNull(): T? = loadSingleOrNull(T::class)
+public inline fun <reified T : Any> ServiceLoader.loadServices(): Sequence<T> = loadServices(T::class)
 
 internal expect val DefaultServiceLoader: ServiceLoader
 

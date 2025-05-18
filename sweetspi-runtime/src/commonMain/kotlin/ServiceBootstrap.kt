@@ -38,30 +38,20 @@ public interface ServiceBootstrap<T : Any> {
  *
  * @param value The instance of the service to be used for bootstrapping.
  */
-public /*inline*/ fun <T : Any> ServiceBootstrap<T>.bootstrap(value: T) {
-    bootstrap { value }
-}
+@Suppress("NOTHING_TO_INLINE")
+public inline fun <T : Any> ServiceBootstrap<T>.bootstrap(value: T): Unit = bootstrap { value }
 
-/**
- * Configures and initializes a list of services using a builder action.
- *
- * The method allows you to define and bootstrap a list of services by specifying a lambda function
- * that configures the mutable list before it is finalized into an immutable list. This method simplifies
- * the process of bootstrapping multiple services at once by providing a declarative approach.
- *
- * @param builderAction A lambda that defines the actions to populate and configure the list of services.
- * It operates on a mutable list of type [T].
- */
-public inline fun <T : Any> ServiceBootstrap<List<T>>.bootstrapList(crossinline builderAction: MutableList<T>.() -> Unit) {
-    bootstrap { buildList(builderAction) }
-}
+@Suppress("NOTHING_TO_INLINE")
+public inline fun <T : Any> ServiceBootstrap<T>.tryBootstrap(value: T): Boolean = tryBootstrap { value }
 
 // TODO: guard with lock and may be optimize a bit
-public abstract class DefaultServiceBootstrap<T : Any> : ServiceBootstrap<T> {
+public abstract class DefaultServiceBootstrap<T : Any>(
+    private val defaultValue: () -> T,
+) : ServiceBootstrap<T> {
+    // 3 states: NOTHING (lambda), SET (lambda), INITIALIZED (value)
     private var bootstrapValueProvider: (() -> T)? = null
-    private val lazyValue = lazy { bootstrapValueProvider?.invoke() ?: createDefaultValue() }
+    private val lazyValue = lazy { bootstrapValueProvider?.invoke() ?: defaultValue.invoke() }
     protected fun accessValue(): T = lazyValue.value
-    protected abstract fun createDefaultValue(): T
 
     public override fun bootstrap(value: () -> T) {
         check(bootstrapValueProvider == null) { "${this::class.simpleName} has been already bootstrapped" }

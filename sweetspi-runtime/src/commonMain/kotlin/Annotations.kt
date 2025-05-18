@@ -7,7 +7,7 @@ package dev.whyoleg.sweetspi
 import kotlin.reflect.*
 
 /**
- * This annotation is used to indicate that a class is a service which could be provided via [ServiceLoader.load]
+ * This annotation is used to indicate that a class is a service which could be provided via [ServiceLoader.loadServices]
  *
  * Implementations of these services are identified by [ServiceProvider] annotation.
  *
@@ -23,7 +23,7 @@ import kotlin.reflect.*
  */
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.RUNTIME)
+//@Retention(AnnotationRetention.RUNTIME)
 public annotation class Service
 
 /**
@@ -47,7 +47,7 @@ public annotation class Service
  */
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS, AnnotationTarget.PROPERTY, AnnotationTarget.FUNCTION)
-@Retention(AnnotationRetention.BINARY)
+//@Retention(AnnotationRetention.BINARY)
 public annotation class ServiceProvider(public vararg val services: KClass<*>)
 
 // TODO: for JVM allow to explicitly pass class which will be used as a service provider
@@ -55,7 +55,7 @@ public annotation class ServiceProvider(public vararg val services: KClass<*>)
 // if the annotation is present, then there will be restrictions on how it could be used by ServiceProvider
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.RUNTIME)
+//@Retention(AnnotationRetention.RUNTIME)
 public annotation class JvmService
 
 // to be interoperable with the jvm service loader
@@ -63,5 +63,5 @@ public annotation class JvmService
 @Repeatable
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.BINARY)
+//@Retention(AnnotationRetention.BINARY)
 public annotation class JvmServiceProvider(public val service: KClass<*>)

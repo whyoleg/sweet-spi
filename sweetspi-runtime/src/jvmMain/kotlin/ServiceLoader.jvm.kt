@@ -16,11 +16,11 @@ public fun ServiceLoader.Default.classLoaderBased(classLoader: ClassLoader): Ser
 internal actual val DefaultServiceLoader: ServiceLoader get() = DefaultServiceLoaderImpl
 
 private object DefaultServiceLoaderImpl : AbstractServiceLoader() {
-    override fun <T : Any> load(cls: Class<T>): JServiceLoader<T> = JServiceLoader.load(cls, cls.classLoader)
+    override fun <T : Any> loadServices(cls: Class<T>): JServiceLoader<T> = JServiceLoader.load(cls, cls.classLoader)
 }
 
 private class ClassLoaderBasedServiceLoader(private val classLoader: ClassLoader) : AbstractServiceLoader() {
-    override fun <T : Any> load(cls: Class<T>): JServiceLoader<T> = JServiceLoader.load(cls, classLoader)
+    override fun <T : Any> loadServices(cls: Class<T>): JServiceLoader<T> = JServiceLoader.load(cls, classLoader)
 }
 
 //private class ModuleBasedServiceLoader(private val moduleLayer: ModuleLayer) : AbstractServiceLoader() {
@@ -28,21 +28,21 @@ private class ClassLoaderBasedServiceLoader(private val classLoader: ClassLoader
 //}
 
 private abstract class AbstractServiceLoader : ServiceLoader {
-    protected abstract fun <T : Any> load(cls: Class<T>): JServiceLoader<T>
+    protected abstract fun <T : Any> loadServices(cls: Class<T>): JServiceLoader<T>
 
     // TODO: re-validate after JvmService/JvmServiceProvider support
     // TODO: re-validate regarding when to throw an error / when to call load (lazy or eager)
-    final override fun <T : Any> load(cls: KClass<T>): Sequence<T> {
+    final override fun <T : Any> loadServices(cls: KClass<T>): Sequence<T> {
         val serviceCls = cls.java
         if (!serviceCls.isAnnotationPresent(Service::class.java)) {
             error("${cls.simpleName} is not annotated with `@Service`")
         }
         return if (serviceCls.isAnnotationPresent(JvmService::class.java)) {
-            Sequence { load(serviceCls).iterator() }
+            Sequence { loadServices(serviceCls).iterator() }
         } else {
             // load provider class eagerly to ensure we can run service loader?
             val wrapperCls = wrapperCls(serviceCls)
-            Sequence { load(wrapperCls).iterator() }.map { it.invoke() }
+            Sequence { loadServices(wrapperCls).iterator() }.map { it.invoke() }
         }
     }
 
