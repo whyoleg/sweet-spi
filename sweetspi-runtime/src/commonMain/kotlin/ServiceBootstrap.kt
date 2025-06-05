@@ -30,6 +30,8 @@ public interface ServiceBootstrap<T : Any> {
     public fun tryBootstrap(value: () -> T): Boolean
 }
 
+public interface LazyServiceValue<T : Any> : Lazy<T>, ServiceBootstrap<T>
+
 /**
  * Provides a utility function to bootstrap a service using a pre-created instance.
  *

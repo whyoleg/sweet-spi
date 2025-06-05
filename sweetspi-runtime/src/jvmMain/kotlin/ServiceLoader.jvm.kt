@@ -9,6 +9,9 @@ package dev.whyoleg.sweetspi
 import kotlin.reflect.*
 import java.util.ServiceLoader as JServiceLoader
 
+public fun SomeService.Companion.serviceLoader(classLoader: ClassLoader): ServiceLoader3<SomeService> = TODO()
+// public fun SomeService.Companion.serviceLoader(moduleLayer: ModuleLayer): ServiceLoader3<SomeService> = TODO()
+
 public fun ServiceLoader.Default.classLoaderBased(classLoader: ClassLoader): ServiceLoader = ClassLoaderBasedServiceLoader(classLoader)
 // TODO: support moduleBased later (needs JDK9+ to compile)
 //public fun ServiceLoader.Default.moduleBased(moduleLayer: ModuleLayer): ServiceLoader = ModuleBasedServiceLoader(moduleLayer)

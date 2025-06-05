@@ -6,6 +6,38 @@ package dev.whyoleg.sweetspi
 
 import kotlin.reflect.*
 
+@Service
+public interface SomeService {
+    public companion object
+}
+
+public expect class ServiceLoader<T : Any> : Iterable<ServiceLoader.Provider<T>> {
+    public fun loadAll(): List<T>
+
+    public fun loadFirst(): T
+    public fun loadFirstOrNull(): T?
+
+    public fun loadSingle(): T
+    public fun loadSingleOrNull(): T?
+
+    public class Provider<T : Any> : Lazy<T> {
+        public val type: KClass<T> // TODO name
+        public val annotations: List<Annotation>
+    }
+
+    public companion object
+}
+
+//public inline fun <reified T : Any> ServiceLoader3.Companion.of(): ServiceLoader3<T> = TODO()
+//public fun <T : Any> ServiceLoader3.Companion.of(cls: KClass<T>): ServiceLoader3<T> = TODO()
+
+// generated. requires `companion object`
+public fun SomeService.Companion.serviceLoader(): ServiceLoader<SomeService> = TODO()
+
+private fun test() {
+    SomeService.serviceLoader().loadFirst()
+}
+
 /**
  * Provides functionality for dynamically loading service implementations using the Service Provider Interface (SPI) mechanism.
  *
@@ -37,7 +69,7 @@ import kotlin.reflect.*
  * }
  * ```
  */
-public interface ServiceLoader {
+public interface ServiceLoaderX {
     public fun <T : Any> loadServices(cls: KClass<T>): Sequence<T>
 
     // intrinsic candidates on JVM (may be just `reified` calls)
