@@ -68,7 +68,7 @@ plugins {
     // apply KSP, don't worry, Gradle Plugin will warn if you've forgotten 
     id("com.google.devtools.ksp") version "2.0.0-1.0.24"
     // finally, apply `sweetspi` Gradle Plugin 
-    id("dev.whyoleg.sweetspi") version "0.1.2"
+    id("dev.whyoleg.sweetspi") version "0.1.3"
 }
 
 kotlin {
@@ -124,7 +124,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             // add runtime
-            implementation("dev.whyoleg.sweetspi:sweetspi-runtime:0.1.2")
+            implementation("dev.whyoleg.sweetspi:sweetspi-runtime:0.1.3")
         }
     }
 }
@@ -133,15 +133,15 @@ dependencies {
     // Note: `ksp` configuration should be used only for jvm projects
     // it's deprecated and will be removed in KSP 2.0
     // https://kotlinlang.org/docs/ksp-multiplatform.html#avoid-the-ksp-configuration-on-ksp-1-0-1
-    ksp("dev.whyoleg.sweetspi:sweetspi-processor:0.1.2")
+    ksp("dev.whyoleg.sweetspi:sweetspi-processor:0.1.3")
 
     // the correct way will be to apply to each target individually, 
     // Note: no need to add it to the `common` compilations, as it'd do nothing there
-    add("kspJvm", "dev.whyoleg.sweetspi:sweetspi-processor:0.1.2")
+    add("kspJvm", "dev.whyoleg.sweetspi:sweetspi-processor:0.1.3")
     // if needed, `test` source sets support
-    add("kspJvmTest", "dev.whyoleg.sweetspi:sweetspi-processor:0.1.2")
+    add("kspJvmTest", "dev.whyoleg.sweetspi:sweetspi-processor:0.1.3")
     // and for each other Kotlin target...
-    add("kspLinuxX64Test", "dev.whyoleg.sweetspi:sweetspi-processor:0.1.2")
+    add("kspLinuxX64Test", "dev.whyoleg.sweetspi:sweetspi-processor:0.1.3")
 }
 ```
 
