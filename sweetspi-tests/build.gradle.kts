@@ -47,7 +47,8 @@ tasks.test {
         TestsArgumentProvider(
             devArtifactsDirectories = devArtifactsResolver.incoming.files,
             testKitDirectory = layout.buildDirectory.dir("test-kit"),
-            projectVersion = provider { project.version.toString() }
+            projectVersion = provider { project.version.toString() },
+            kspVersion = providers.gradleProperty("sweetbuild.tests.kspVersion").orElse(libs.versions.ksp),
         )
     )
 }
@@ -57,6 +58,8 @@ class TestsArgumentProvider(
     private val testKitDirectory: Provider<Directory>,
     @get:Input
     val projectVersion: Provider<String>,
+    @get:Input
+    val kspVersion: Provider<String>,
 ) : CommandLineArgumentProvider {
 
     // we don't need to track ALL content because of flexible timestamps
@@ -84,5 +87,6 @@ class TestsArgumentProvider(
         "-Dorg.gradle.testkit.dir=${testKitDirectoryPath.get()}",
         "-Dsweettests.dev-artifacts-directories=${devArtifactsDirectoriesList.get()}",
         "-Dsweettests.dev-artifacts-version=${projectVersion.get()}",
+        "-Dsweettests.ksp-version=${kspVersion.get()}",
     )
 }

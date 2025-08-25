@@ -8,6 +8,8 @@ object TestsArguments {
     val devArtifactsDirectories = systemProperty("dev-artifacts-directories").split(",")
     val devArtifactsVersion = systemProperty("dev-artifacts-version")
 
+    val kspVersion = systemProperty("ksp-version")
+
     private fun systemProperty(name: String): String = checkNotNull(System.getProperty("sweettests.$name")) {
         "'sweettests.$name' is missing in the system properties"
     }

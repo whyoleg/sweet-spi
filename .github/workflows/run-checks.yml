@@ -7,6 +7,10 @@ jobs:
   build-project:
     uses: ./.github/workflows/run-build-project.yml
 
+  tests:
+    needs: [ build-project ]
+    uses: ./.github/workflows/run-tests.yml
+
   build-website:
     needs: [ build-project ]
     uses: ./.github/workflows/run-build-website.yml
