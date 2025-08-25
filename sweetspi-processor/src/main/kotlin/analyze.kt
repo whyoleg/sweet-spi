@@ -101,7 +101,7 @@ fun analyze(logger: KSPLogger, resolver: Resolver): SweetContext? {
 
         @Suppress("UNCHECKED_CAST")
         val serviceTypes = serviceProviderAnnotation.arguments.find { it.name?.asString() == "services" }?.value as? List<KSType>
-            ?: error("Can't find 'services' argument for '@ServiceProvider' annotation on '$simpleName'")
+            ?: emptyList()
 
         if (serviceTypes.isEmpty()) return null
 

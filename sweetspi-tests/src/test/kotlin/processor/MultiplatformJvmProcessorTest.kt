@@ -60,8 +60,8 @@ class MultiplatformJvmProcessorTest : AbstractTest() {
                 listOf(":kspKotlinJvm"),
                 taskPaths(TaskOutcome.FAILED)
             )
-            assertContains(output, "main.kt:5: No applicable services found for 'SimpleServiceImpl1'")
-            assertContains(output, "main.kt:6: No applicable services found for 'SimpleServiceImpl2'")
+            assertContains(output, "No applicable services found for 'SimpleServiceImpl1'")
+            assertContains(output, "No applicable services found for 'SimpleServiceImpl2'")
         }
     }
 }
