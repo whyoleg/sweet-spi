@@ -53,8 +53,7 @@ Documentation can be found here, or on the website:
 
 ## Using in your projects
 
-Compatible with Kotlin 2.0.0+ (tested up to including 2.1.20-Beta1) and KSP 1.0.24+.
-KSP2 is not supported because of [KSP#1823](https://github.com/google/ksp/issues/1823)
+Compatible with Kotlin 2.0.0+ and KSP 1.0.24+ (tested up to including Kotlin 2.2.20-RC and KSP 2.0.2).
 Using other Kotlin/KSP versions should still work but is not tested.
 
 ```kotlin
@@ -152,24 +151,6 @@ dependencies {
 * on other targets [EagerInitialization](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.native/-eager-initialization/) annotation is
   used.
   Note: this API is experimental/deprecated for some amount of time (AFAIK it was `deprecated` from the beginning). But, it works!
-
-## Current status and future
-
-Overall, I do not expect that API or implementation will change a lot, so probably it would be easier to just release 1.0.
-But there are too many moving things and experimental APIs required to implement such a feature.
-One of such things is mentioned above is `EagerInitialization` annotation.
-The other is dependency on KSP.
-While there are no real problems with using KSP, it requires manual setup on the user side.
-Alternatives are:
-
-* write compiler plugin – not really a solution at the current moment, as this will require much more work compatibility wise until it
-  becomes stable
-* use new [Kotlin Analysis API](http://kotl.in/analysis-api) - KSP2 is based on it, so probably it should work, but it's not yet stable, not
-  yet published to Maven Central.
-  This is possible to overcome, but again, not perfect compatibility wises.
-  Plus, it still has some bugs which required fixing for sweet-spi to work.
-  F.e [KSP#1823](https://github.com/google/ksp/issues/1823) is caused by a bug in AA, and this also means that sweet-spi is not compatible
-  with KSP2
 
 ## Bugs and Feedback
 
