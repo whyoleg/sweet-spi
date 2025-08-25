@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.1.3
+
+> Published 25 Aug 2025
+
+* Fix compatibility with KSP2 ([#12](https://github.com/whyoleg/sweet-spi/issues/12))
+
 ## 0.1.2
 
 > Published 19 Jan 2025
