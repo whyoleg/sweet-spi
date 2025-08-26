@@ -4,7 +4,6 @@
 
 @file:Suppress("HasPlatformType", "UnstableApiUsage")
 
-import com.vanniktech.maven.publish.*
 import sweetbuild.*
 
 plugins {
@@ -13,7 +12,7 @@ plugins {
 }
 
 mavenPublishing {
-    publishToMavenCentral(SonatypeHost.S01)
+    publishToMavenCentral()
     signAllPublications()
 
     pom {
