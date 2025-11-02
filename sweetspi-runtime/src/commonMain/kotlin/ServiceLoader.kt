@@ -63,6 +63,8 @@ public annotation class ServiceProvider(
  * - interfaces or abstract classes annotated with [Service] can be retrieved using this loader.
  * - implementations of these services are identified using the [ServiceProvider] annotation.
  *
+ * On JVM platforms, service providers available through `java.util.ServiceLoader` will also be included.
+ *
  * Usage:
  * ```
  * // module: A
