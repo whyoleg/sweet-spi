@@ -49,7 +49,9 @@ internal class InternalServiceLoader(
 
         @Suppress("UNCHECKED_CAST")
         return synchronized(this) {
-            providers.getOrPut(cls) { modules.flatMap { it.providers(cls) } } as List<T>
+            providers.getOrPut(cls) { modules.flatMap { it.providers(cls) } } as List<T> + loadPlatformServices(cls)
         }
     }
 }
+
+internal expect fun <T : Any> loadPlatformServices(service: KClass<out T>): List<T>

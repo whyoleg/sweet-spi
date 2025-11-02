@@ -42,4 +42,42 @@ class JvmRuntimeTest : AbstractTest() {
             assert(task(":test")!!.outcome.isPositive)
         }
     }
+
+    @FastVersionedTest
+    fun testJvmServicesAreIncluded(versions: TestVersions) {
+        val project = project(versions) {
+            withSweetSpi()
+            kotlinJvmTest()
+            file("src/$MAIN/resources/META-INF/services/sweettests.multiplatform.SimpleService") {
+                "sweettests.multiplatform.SimpleServiceImpl2"
+            }
+            kotlinSourceFile(
+                sourceSet = MAIN, path = "main.kt",
+                code = """
+                @Service interface SimpleService
+                @ServiceProvider object SimpleServiceImpl : SimpleService
+                class SimpleServiceImpl2 : SimpleService
+                """.trimIndent()
+            )
+            kotlinSourceFile(
+                sourceSet = TEST, path = "test.kt",
+                code = """
+                import kotlin.test.*
+                
+                class SimpleTest {
+                    @Test
+                    fun doTest() {
+                        val services = ServiceLoader.load<SimpleService>()
+                        assertEquals(2, services.size)
+                        assertEquals(SimpleServiceImpl, services[0])
+                        assertEquals(SimpleServiceImpl2::class, services[1]::class)
+                    }
+                }
+                """.trimIndent()
+            )
+        }
+        project.gradle("build") {
+            assert(task(":test")!!.outcome.isPositive)
+        }
+    }
 }

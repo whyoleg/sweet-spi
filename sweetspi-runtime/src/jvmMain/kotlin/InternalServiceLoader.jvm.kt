@@ -5,6 +5,7 @@
 package dev.whyoleg.sweetspi.internal
 
 import java.util.*
+import kotlin.reflect.*
 
 @JvmField
 @InternalSweetSpiApi
@@ -26,3 +27,7 @@ internal actual val internalServiceLoader: Lazy<InternalServiceLoader> = lazy {
 internal actual typealias SynchronizedObject = Any
 
 internal actual inline fun <T> synchronized(lock: SynchronizedObject, block: () -> T): T = kotlin.synchronized(lock, block)
+
+@OptIn(InternalSweetSpiApi::class)
+internal actual fun <T : Any> loadPlatformServices(service: KClass<out T>): List<T> =
+    Iterable { ServiceLoader.load(service.java, service.java.classLoader).iterator() }.toList()

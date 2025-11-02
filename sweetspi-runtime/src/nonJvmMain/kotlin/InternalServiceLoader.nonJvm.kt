@@ -4,6 +4,8 @@
 
 package dev.whyoleg.sweetspi.internal
 
+import kotlin.reflect.*
+
 @InternalSweetSpiApi
 private val modules = mutableListOf<InternalServiceModule>()
 
@@ -15,3 +17,5 @@ public fun registerInternalServiceModule(module: InternalServiceModule) {
     check(!internalServiceLoader.isInitialized()) { "ServiceLoader was already initialized, no more modules can be registered" }
     modules += module
 }
+
+internal actual fun <T : Any> loadPlatformServices(service: KClass<out T>): List<T> = emptyList()
