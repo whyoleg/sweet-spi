@@ -37,7 +37,10 @@ public annotation class Service
  * that have the [Service] annotation.
  *
  * This annotation can be applied to the following targets:
- * - [AnnotationTarget.CLASS]: Only applicable to objects
+ * - [AnnotationTarget.CLASS]: Applicable to objects or classes with:
+ *   1. No explicit constructor, or
+ *   2. A constructor that has no parameters, or
+ *   3. A constructor where all parameters have default values.
  * - [AnnotationTarget.PROPERTY]: Only applicable to immutable non-suspend properties with getter or initializer
  * - [AnnotationTarget.FUNCTION]: Only applicable to non-suspend functions without arguments and without receiver
  *
