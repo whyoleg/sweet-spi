@@ -8,10 +8,9 @@ package dev.whyoleg.sweetspi.internal
 private val modules = mutableListOf<InternalServiceModule>()
 
 @InternalSweetSpiApi
-internal actual val internalServiceLoader: Lazy<InternalServiceLoader> = lazy { InternalServiceLoader(modules) }
-
-@InternalSweetSpiApi
 public fun registerInternalServiceModule(module: InternalServiceModule) {
-    check(!internalServiceLoader.isInitialized()) { "ServiceLoader was already initialized, no more modules can be registered" }
     modules += module
 }
+
+@InternalSweetSpiApi
+internal actual fun getAvailableModules(): List<InternalServiceModule> = modules
