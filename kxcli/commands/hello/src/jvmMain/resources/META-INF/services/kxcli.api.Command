@@ -1,0 +1,1 @@
+kxcli.commands.hello.HelloCommand
