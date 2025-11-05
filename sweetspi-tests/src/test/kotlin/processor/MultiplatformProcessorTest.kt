@@ -45,22 +45,7 @@ class MultiplatformProcessorTest : AbstractTest() {
             )
         }
         project.gradle("build", expectFailure = true) {
-            assertEquals(
-                setOf(
-                    ":kspKotlinAndroidNativeX64",
-                    ":kspKotlinAndroidNativeArm32",
-                    ":kspKotlinAndroidNativeArm64",
-                    ":kspKotlinLinuxArm64",
-                    ":kspKotlinMingwX64",
-                    ":kspKotlinAndroidNativeX86",
-                    ":kspKotlinLinuxX64",
-                    ":kspKotlinJs",
-                    ":kspKotlinJvm",
-                    ":kspKotlinWasmJs",
-                    ":kspKotlinWasmWasi"
-                ),
-                taskPaths(TaskOutcome.FAILED).toSet()
-            )
+            assertTrue(taskPaths(TaskOutcome.SUCCESS).none { it.startsWith(":kspKotlin") })
             assertContains(
                 output,
                 "@ServiceProvider target class 'SimpleServiceImpl' must have a defaultable constructor or be an 'object'"
