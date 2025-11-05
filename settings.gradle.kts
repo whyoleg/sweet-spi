@@ -14,13 +14,23 @@ plugins {
 }
 
 projects("sweet-spi") {
-    // build-tools modules
-    module("sweetspi-bom")
-    module("sweetspi-version-catalog")
+//    // build-tools modules
+//    module("sweetspi-bom")
+//    module("sweetspi-version-catalog")
+//
+//    // API
+//    module("sweetspi-runtime")
+//    module("sweetspi-processor")
+//    module("sweetspi-gradle-plugin")
+//    module("sweetspi-tests")
 
-    // API
-    module("sweetspi-runtime")
-    module("sweetspi-processor")
-    module("sweetspi-gradle-plugin")
-    module("sweetspi-tests")
+    folder("kxcli") {
+        module("api")
+        module("app")
+        folder("commands", prefix = "command") {
+            module("hello")
+            module("calculate")
+            module("list")
+        }
+    }
 }

@@ -1,6 +1,6 @@
 [versions]
 
-kotlin = "2.0.0"
+kotlin = "2.2.21"
 ksp = "2.0.0-1.0.24"
 
 # kotlin/kotlinx

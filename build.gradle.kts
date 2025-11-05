@@ -21,15 +21,15 @@ plugins.withType<NodeJsRootPlugin> {
     }
 }
 
-tasks.register<Copy>("mkdocsCopy") {
-    into(rootDir.resolve("docs"))
-    from("CHANGELOG.md")
-    from("README.md")
-}
-
-tasks.register<Exec>("mkdocsBuild") {
-    dependsOn(":mkdocsCopy")
-    dependsOn(":sweetspi-runtime:dokkaHtml")
-    dependsOn(":sweetspi-gradle-plugin:dokkaHtml")
-    commandLine("mkdocs", "build", "--clean", "--strict")
-}
+//tasks.register<Copy>("mkdocsCopy") {
+//    into(rootDir.resolve("docs"))
+//    from("CHANGELOG.md")
+//    from("README.md")
+//}
+//
+//tasks.register<Exec>("mkdocsBuild") {
+//    dependsOn(":mkdocsCopy")
+//    dependsOn(":sweetspi-runtime:dokkaHtml")
+//    dependsOn(":sweetspi-gradle-plugin:dokkaHtml")
+//    commandLine("mkdocs", "build", "--clean", "--strict")
+//}
