@@ -47,7 +47,8 @@ fun generate(codeGenerator: CodeGenerator, platform: PlatformInfo, context: Swee
                     context.serviceProviders.forEach { (service, providers) ->
                         val data = providers.map {
                             when (it) {
-                                is KSClassDeclaration -> "%T" to it.toClassName()
+                                // the analyzer guarantees that we have either objects or classes with defaultable constructors
+                                is KSClassDeclaration -> (if (it.classKind == ClassKind.OBJECT) "%T" else "%T()") to it.toClassName()
                                 is KSFunctionDeclaration -> "%M()" to MemberName(it.packageName.asString(), it.simpleName.asString())
                                 is KSPropertyDeclaration -> "%M" to MemberName(it.packageName.asString(), it.simpleName.asString())
                                 else -> error("should not happen")
