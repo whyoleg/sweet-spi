@@ -2,6 +2,7 @@ package kxcli
 
 import kotlinx.cinterop.*
 import kxcli.api.*
+import kxcli.api.internal.cinterop.C_Command
 import platform.posix.*
 import kotlin.experimental.*
 import kotlin.native.ref.*
@@ -12,22 +13,35 @@ internal actual fun loadCommands(): List<Command> {
     val files = listOf(
         "commands/libhello.dylib"
     )
-
+//extern void kxcli_export_command(void* pointer);
     return files.map {
         // will be closed automatically (cleaner)
         val library = Library.open(it, RTLD_NOW)
-        val commandPointer = library.getFunction<() -> COpaquePointer>("kxcli_command").invoke().asStableRef<Command>()
+        val arena = Arena()
+        val struct = arena.alloc<C_Command>()
+        // get struct
+        library.getFunction<(COpaquePointer) -> Unit>("kxcli_export_command").invoke(struct.ptr)
 
         // TODO
         // println("Hey ${commandPointer.get().description}") - works fine
         // println(commandPointer.get().description) - throws `class kotlin.String cannot be cast to class kotlin.String`
-        CommandWrapper(commandPointer.get(), library)
+        CommandWrapper(
+            arena,
+            Command.fromStruct(struct),
+            library
+        )
     }
 }
 
 // we need this class only to have cleaner, which will close library if Command will become unused
 @OptIn(ExperimentalForeignApi::class, ExperimentalNativeApi::class)
-private class CommandWrapper(command: Command, private val library: Library) : Command by command
+private class CommandWrapper(
+    arena: Arena,
+    command: Command,
+    private val library: Library,
+) : Command by command {
+    private val cleaner = createCleaner(arena) { it.clear() }
+}
 
 @OptIn(ExperimentalForeignApi::class, ExperimentalNativeApi::class)
 internal class Library private constructor(private val handle: COpaquePointer) {

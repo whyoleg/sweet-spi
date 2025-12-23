@@ -1,0 +1,2 @@
+package = kxcli.api.internal.cinterop
+headers = command.h

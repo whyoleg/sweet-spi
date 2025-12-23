@@ -7,7 +7,7 @@ internal class HelloCommand : Command {
     override val description: String
         get() = "prints `Hello, {arg}!"
 
-    override fun execute(args: List<String>): String? = try {
+    override fun execute(args: Array<String>): String? = try {
         val arg = args.singleOrNull() ?: error("Please provide a single argument")
         println("Hello, $arg!")
         null

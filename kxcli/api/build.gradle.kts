@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+
 /*
  * Copyright (c) 2024 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
@@ -30,4 +32,12 @@ kotlin {
     mingwX64()
 
 
+    targets.withType<KotlinNativeTarget> {
+        compilations.named("main") {
+            cinterops.create("command") {
+                defFile("src/nativeMain/cinterop/command.def")
+                includeDirs("src/nativeMain/cinterop/include")
+            }
+        }
+    }
 }

@@ -14,10 +14,14 @@ kotlin {
     js {
         nodejs()
         browser()
+
+        binaries.executable()
     }
     wasmJs {
         nodejs()
         browser()
+
+        binaries.executable()
     }
 
     // desktop native targets

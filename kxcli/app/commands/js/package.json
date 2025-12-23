@@ -1,0 +1,10 @@
+{
+  "name": "sweet-spi-kxcli-command-hello",
+  "version": "0.1.3",
+  "main": "sweet-spi-kxcli-command-hello.mjs",
+  "devDependencies": {},
+  "dependencies": {},
+  "peerDependencies": {},
+  "optionalDependencies": {},
+  "bundledDependencies": []
+}

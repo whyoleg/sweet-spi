@@ -14,10 +14,16 @@ kotlin {
     js {
         nodejs()
         browser()
+
+        binaries.library()
+        useEsModules()
     }
     wasmJs {
         nodejs()
         browser()
+
+        binaries.library()
+        useEsModules()
     }
 
     // desktop native targets

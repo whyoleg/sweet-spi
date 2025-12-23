@@ -2,7 +2,7 @@ package kxcli
 
 import kxcli.api.*
 
-public fun main(args: Array<String>) {
+public suspend fun main(args: Array<String>) {
 //    val command = args.firstOrNull() ?: error("No command specified")
 //    val commandArgs = args.drop(1)
     val commands = loadCommands()
@@ -10,8 +10,8 @@ public fun main(args: Array<String>) {
     commands.forEach {
         println("Command: ${it.name}")
         println("Description: ${it.description}")
-        it.execute(listOf("Oleg"))
+        it.execute(arrayOf("Oleg"))
     }
 }
 
-internal expect fun loadCommands(): List<Command>
+internal expect suspend fun loadCommands(): List<Command>
