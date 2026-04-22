@@ -32,7 +32,7 @@ import kotlin.reflect.*
  */
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.BINARY)
+@Retention(AnnotationRetention.RUNTIME) // runtime needed for JVM only
 public annotation class Service(
     val compatibleWithJavaServiceLoader: Boolean = false,
 )

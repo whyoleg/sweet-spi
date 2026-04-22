@@ -78,7 +78,8 @@ public actual object ServiceLoader {
     }
 
     // JDK9+ (maybe Android)
-    private val hasServiceLoaderProvider = try {
+    @PublishedApi
+    internal val hasServiceLoaderProvider: Boolean = try {
         Class.forName($$"java.util.ServiceLoader$Provider")
         true
     } catch (_: Throwable) {
@@ -118,8 +119,8 @@ public actual object ServiceLoader {
         return providerCls as Class<out Provider<T>>
     }
 
-    // JDK9+
-    private class JavaProviderWrapper<T : Any>(private val provider: JavaServiceLoader.Provider<T>) : Provider<T> {
+    @PublishedApi // TODO: remove PublishedApi
+    internal class JavaProviderWrapper<T : Any>(private val provider: JavaServiceLoader.Provider<T>) : Provider<T> {
         override val type: KClass<out T> get() = provider.type().kotlin
 
         // additional lazy, as Java one doesn't support `isInitialized`
@@ -128,8 +129,41 @@ public actual object ServiceLoader {
         override fun isInitialized(): Boolean = delegate.isInitialized()
     }
 
-    private class InstanceProviderWrapper<T : Any>(override val value: T) : Provider<T> {
+    @PublishedApi // TODO: remove PublishedApi
+    internal class InstanceProviderWrapper<T : Any>(override val value: T) : Provider<T> {
         override val type: KClass<out T> get() = value::class
         override fun isInitialized(): Boolean = true
+    }
+
+    // for compiler plugin replacement of `reified` calls
+
+    // optimizable by R8
+    @PublishedApi
+    internal inline fun <reified T> compilerLoadSequence(): Sequence<T> = JavaServiceLoader.load(
+        /* service = */ T::class.java,
+        /* loader = */ T::class.java.classLoader
+    ).iterator().asSequence()
+
+    @PublishedApi // JDK 9+
+    internal inline fun <reified T> compilerLoadProvidersSequence(): Sequence<JavaServiceLoader.Provider<T>> {
+        return JavaServiceLoader.load(
+            T::class.java,
+            T::class.java.classLoader
+        ).stream().asSequence().constrainOnce()
+    }
+
+    @PublishedApi // if `compatibleWithJavaServiceLoader=false`
+    internal inline fun <T : Any, reified P : Provider<T>> compilerLoad(): Sequence<T> = compilerLoadSequence<P>().map(Provider<T>::value)
+
+    @PublishedApi // if `compatibleWithJavaServiceLoader=false`
+    internal inline fun <T : Any, reified P : Provider<T>> compilerLoadProviders(): Sequence<Provider<T>> = compilerLoadSequence<P>()
+
+    @PublishedApi // if `compatibleWithJavaServiceLoader=true`
+    internal inline fun <reified T : Any> compilerLoadCompatible(): Sequence<T> = compilerLoadSequence<T>()
+
+    @PublishedApi // if `compatibleWithJavaServiceLoader=true`
+    internal inline fun <reified T : Any> compilerLoadProvidersCompatible(): Sequence<Provider<T>> = when (hasServiceLoaderProvider) {
+        true -> compilerLoadProvidersSequence<T>().map(::JavaProviderWrapper)
+        false -> compilerLoadSequence<T>().map(::InstanceProviderWrapper)
     }
 }
