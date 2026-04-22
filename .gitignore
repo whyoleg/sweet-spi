@@ -17,3 +17,4 @@ build/
 /docs/README.md
 /docs/CHANGELOG.md
 /site
+.DS_Store
