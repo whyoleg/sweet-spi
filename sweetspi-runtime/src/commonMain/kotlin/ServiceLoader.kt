@@ -2,11 +2,8 @@
  * Copyright (c) 2024 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
-@file:Suppress("PackageDirectoryMismatch")
-
 package dev.whyoleg.sweetspi
 
-import dev.whyoleg.sweetspi.internal.*
 import kotlin.jvm.*
 import kotlin.reflect.*
 
@@ -24,11 +21,21 @@ import kotlin.reflect.*
  *     fun saySomethingSweet()
  * }
  * ```
+ *
+ * #### JVM
+ *
+ * Depending on [compatibleWithJavaServiceLoader]:
+ * - `false`: the service could be loaded **only** via [ServiceLoader.load].
+ * - `true`: the service could be loaded via `java.util.ServiceLoader`.
+ *   In this case, some Kotlin features will not be available;
+ *   for example, the service could not be [provided][ServiceProvider] via an `object`, `function`, or `property`.
  */
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.BINARY)
-public annotation class Service
+public annotation class Service(
+    val compatibleWithJavaServiceLoader: Boolean = false,
+)
 
 /**
  * This annotation is used to identify which service(s) the annotated element provides an instance for.
@@ -51,12 +58,19 @@ public annotation class Service
  *     override fun saySomethingSweet() { ... }
  * }
  * ```
+ *
+ * #### JVM
+ *
+ * Depending on [allowsUnannotatedServices]:
+ * - `false`: [services] should be annotated with [Service] annotation
+ * - `true`: allows providing a [services] without [Service] annotation; no compile-time validation will be available
  */
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS, AnnotationTarget.PROPERTY, AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
 public annotation class ServiceProvider(
     public vararg val services: KClass<*>,
+    val allowsUnannotatedServices: Boolean = false,
 )
 
 /**
@@ -90,18 +104,49 @@ public annotation class ServiceProvider(
  * }
  * ```
  */
-public object ServiceLoader {
+public expect object ServiceLoader {
     /**
      * Retrieves a list of services of the specified type [T], which must be annotated with [Service].
      * Providers of these services must be annotated with [ServiceProvider].
+     *
+     * Returned sequence can be iterated only once.
+     *
+     * On JVM: optimizable by R8
      */
-    @JvmStatic
-    @OptIn(InternalSweetSpiApi::class)
-    public fun <T : Any> load(cls: KClass<T>): List<T> = internalServiceLoader.value.load(cls)
+    public inline fun <reified T : Any> load(): Sequence<T>
+
+    /**
+     * Retrieves a list of [providers][Provider] for services of the specified type [T], which must be annotated with [Service].
+     * Providers of these services must be annotated with [ServiceProvider].
+     *
+     * Returned sequence can be iterated only once.
+     * [Provider.value] instantiation is lazy on the best effort basis.
+     *
+     * On JVM: optimizable by R8
+     */
+    public inline fun <reified T : Any> loadProviders(): Sequence<Provider<T>>
 
     /**
      * Retrieves a list of services of the specified type [T], which must be annotated with [Service].
      * Providers of these services must be annotated with [ServiceProvider].
+     *
+     * Returned sequence can be iterated only once.
      */
-    public inline fun <reified T : Any> load(): List<T> = load(T::class)
+    @JvmStatic
+    public fun <T : Any> load(cls: KClass<T>): Sequence<T>
+
+    /**
+     * Retrieves a list of [providers][Provider] for services of the specified type [T], which must be annotated with [Service].
+     * Providers of these services must be annotated with [ServiceProvider].
+     *
+     * Returned sequence can be iterated only once.
+     * [Provider.value] instantiation is lazy on the best effort basis.
+     */
+    @JvmStatic
+    public fun <T : Any> loadProviders(cls: KClass<T>): Sequence<Provider<T>>
+
+    public interface Provider<T : Any> : Lazy<T> {
+        // type of the real instance (or type of the method returning an instance)
+        public val type: KClass<out T>
+    }
 }

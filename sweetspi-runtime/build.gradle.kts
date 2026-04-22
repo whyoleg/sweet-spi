@@ -73,18 +73,9 @@ kotlin {
     applyDefaultHierarchyTemplate {
         common {
             group("nonJvm") {
-                group("jsAndWasmShared") {
-                    withJs()
-                    withWasmJs()
-                    withWasmWasi()
-                }
-                // mutex native API isn't commonized properly, so we need to define additional source sets to overcome it
-                group("native") {
-                    group("nix") {
-                        group("linux")
-                        group("apple")
-                    }
-                }
+                group("web")
+                group("native")
+                withWasmWasi()
             }
         }
     }
