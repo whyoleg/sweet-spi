@@ -1,55 +1,56 @@
 /*
- * Copyright (c) 2024-2025 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright (c) 2024 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
+import org.gradle.api.tasks.testing.*
+import org.jetbrains.kotlin.gradle.*
 import org.jetbrains.kotlin.gradle.dsl.*
 import org.jetbrains.kotlin.gradle.plugin.*
 import org.jetbrains.kotlin.gradle.targets.jvm.*
+import sweetbuild.*
 
-plugins {
-    id("sweetbuild.kotlin-base")
-}
+val warningsAsErrors = booleanProperty("sweetbuild.warningsAsErrors", defaultValue = true)
+val skipTestTasks = booleanProperty("sweetbuild.skipTests", defaultValue = false)
 
-@Suppress("UnstableApiUsage")
+@OptIn(ExperimentalKotlinGradlePluginApi::class)
 plugins.withType<KotlinBasePluginWrapper>().configureEach {
     extensions.configure<KotlinProjectExtension>("kotlin") {
-        val javaToolchains = project.extensions.getByName<JavaToolchainService>("javaToolchains")
+        fun KotlinCommonCompilerOptions.configureCommonOptions() {
+            allWarningsAsErrors.set(warningsAsErrors)
+            progressiveMode.set(true)
+            freeCompilerArgs.add("-Xrender-internal-diagnostic-names")
+        }
 
-        val jdkToolchainVersion = 8
-        val jdkTestVersions = setOf(11, 17, 21)
-
-        fun TaskProvider<out Test>.jvmToolchain(jdkVersion: Int) {
-            configure {
-                javaLauncher.set(javaToolchains.launcherFor {
-                    languageVersion.set(JavaLanguageVersion.of(jdkVersion))
-                })
-            }
+        fun KotlinJvmCompilerOptions.configureJvmOptions() {
+            jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
+            jvmTarget.set(JvmTarget.JVM_1_8)
         }
 
         when (this) {
             is KotlinJvmProjectExtension    -> {
-                jvmToolchain(jdkToolchainVersion)
-                plugins.apply("org.gradle.jvm-test-suite")
-                project.extensions.configure<TestingExtension>("testing") {
-                    val test by suites.getting(JvmTestSuite::class) {
-                        jdkTestVersions.forEach { jdkTestVersion ->
-                            targets.register("test${jdkTestVersion}") {
-                                testTask.jvmToolchain(jdkTestVersion)
-                            }
-                        }
-                    }
+                compilerOptions.configureCommonOptions()
+                target {
+                    compilerOptions.configureJvmOptions()
                 }
             }
             is KotlinMultiplatformExtension -> {
-                jvmToolchain(jdkToolchainVersion)
+                compilerOptions.configureCommonOptions()
                 targets.withType<KotlinJvmTarget>().configureEach {
-                    jdkTestVersions.forEach { jdkTestVersion ->
-                        testRuns.create("${jdkTestVersion}Test") {
-                            executionTask.jvmToolchain(jdkTestVersion)
-                        }
-                    }
+                    compilerOptions.configureJvmOptions()
                 }
             }
         }
     }
+}
+
+plugins.withType<JavaBasePlugin>().configureEach {
+    extensions.configure<JavaPluginExtension>("java") {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+}
+
+tasks.matching { it is AbstractTestTask }.configureEach {
+    val skipTestTasks = skipTestTasks // for CC
+    onlyIf { !skipTestTasks.get() }
 }
