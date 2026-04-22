@@ -11,7 +11,6 @@ plugins {
     id("sweetbuild.publication")
     id("sweetbuild.documentation")
     alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.kotlinx.bcv)
     alias(libs.plugins.gradle.publish)
 }
 
@@ -19,19 +18,11 @@ description = "sweet-spi Gradle plugin"
 
 kotlin {
     explicitApi()
-    compilerOptions {
-        // gradle 8+
-        languageVersion.set(KotlinVersion.KOTLIN_1_8)
-        apiVersion.set(KotlinVersion.KOTLIN_1_8)
-        // progressiveMode works only for latest kotlin version
-        progressiveMode.set(false)
-    }
 }
 
 dependencies {
-    // TODO: remove `stdlib`
-    compileOnly(libs.kotlin.gradle.plugin)
-    compileOnly(libs.ksp.gradle.plugin)
+    compileOnly(kotlin("stdlib"))
+    compileOnly(kotlin("gradle-plugin"))
 }
 
 @Suppress("UnstableApiUsage")

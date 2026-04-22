@@ -16,6 +16,7 @@ plugins {
 projects("sweet-spi") {
     module("sweetspi-runtime")
     module("sweetspi-processor")
+    module("sweetspi-compiler-plugin")
     module("sweetspi-gradle-plugin")
     module("sweetspi-tests")
 }
