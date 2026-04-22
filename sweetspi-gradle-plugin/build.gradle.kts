@@ -2,8 +2,10 @@
  * Copyright (c) 2024-2025 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
+@file:OptIn(ExperimentalAbiValidation::class)
+
 import org.jetbrains.dokka.gradle.*
-import org.jetbrains.kotlin.gradle.dsl.*
+import org.jetbrains.kotlin.gradle.dsl.abi.*
 
 plugins {
     `java-gradle-plugin`
@@ -18,6 +20,7 @@ description = "sweet-spi Gradle plugin"
 
 kotlin {
     explicitApi()
+    abiValidation { enabled = true }
 }
 
 dependencies {

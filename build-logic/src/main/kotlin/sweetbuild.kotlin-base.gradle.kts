@@ -7,10 +7,6 @@ import org.jetbrains.kotlin.gradle.dsl.*
 import org.jetbrains.kotlin.gradle.plugin.*
 import org.jetbrains.kotlin.gradle.targets.jvm.*
 
-plugins {
-    id("org.jetbrains.kotlinx.kover")
-}
-
 @OptIn(ExperimentalKotlinGradlePluginApi::class)
 plugins.withType<KotlinBasePluginWrapper>().configureEach {
     extensions.configure<KotlinProjectExtension>("kotlin") {
