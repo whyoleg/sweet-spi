@@ -61,16 +61,16 @@ public annotation class Service(
  *
  * #### JVM
  *
- * Depending on [allowsUnannotatedServices]:
+ * Depending on [allowsUnannotatedJavaServices]:
  * - `false`: [services] should be annotated with [Service] annotation
- * - `true`: allows providing a [services] without [Service] annotation; no compile-time validation will be available
+ * - `true`: allows providing a [services] without [Service] annotation; no compile-time validation will be available; jvm only
  */
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS, AnnotationTarget.PROPERTY, AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
 public annotation class ServiceProvider(
     public vararg val services: KClass<*>,
-    val allowsUnannotatedServices: Boolean = false,
+    val allowsUnannotatedJavaServices: Boolean = false,
 )
 
 /**
