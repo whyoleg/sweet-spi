@@ -43,7 +43,7 @@ public actual object ServiceLoader {
     @Suppress("UNCHECKED_CAST")
     private fun <T : Any> getRegistry(cls: KClass<T>): Registry<T> {
         return cls.findAssociatedObject<ServiceRegistryHolder>() as? Registry<T> ?: error(
-            "Service registry not found for class ${cls.qualifiedName}"
+            "Service registry not found for class ${cls.simpleName}"
         )
     }
 
