@@ -4,9 +4,18 @@
 
 package dev.whyoleg.sweetspi.compiler
 
+import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.compiler.plugin.*
 import org.jetbrains.kotlin.config.*
+import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
+import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar.ExtensionRegistrarContext
+import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
+import java.nio.file.Path
 import kotlin.io.path.*
+
+private object SweetConfigurationKeys {
+    val RESOURCES_PATH = CompilerConfigurationKey<Path>("Path to resources dir")
+}
 
 @OptIn(ExperimentalCompilerApi::class)
 class SweetCommandLineProcessor : CommandLineProcessor {
@@ -32,5 +41,27 @@ class SweetCommandLineProcessor : CommandLineProcessor {
             required = true,
             allowMultipleOccurrences = false,
         )
+    }
+}
+
+@OptIn(ExperimentalCompilerApi::class)
+class SweetCompilerPluginRegistrar : CompilerPluginRegistrar() {
+    override val pluginId: String get() = "dev.whyoleg.sweetspi"
+    override val supportsK2: Boolean get() = true
+
+    override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
+        FirExtensionRegistrarAdapter.registerExtension(SweetFirExtensionRegistrar())
+
+        IrGenerationExtension.registerExtension(
+            SweetIrGenerationExtension(
+                resourcesPath = configuration.getNotNull(SweetConfigurationKeys.RESOURCES_PATH)
+            )
+        )
+    }
+}
+
+class SweetFirExtensionRegistrar : FirExtensionRegistrar() {
+    override fun ExtensionRegistrarContext.configurePlugin() {
+        +::SweetFirCheckers
     }
 }
