@@ -50,6 +50,7 @@ fun bootstrapKotlinJvmProject() {
         dependencies { 
             implementation(kotlin("test"))
         }
+
         """.trimIndent()
     )
 }
@@ -69,6 +70,7 @@ fun bootstrapKotlinMultiplatformProject() {
                 implementation(kotlin("test"))
             }
         }
+
         """.trimIndent()
     )
 }

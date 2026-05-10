@@ -10,7 +10,7 @@ interface SimpleService {
 }
 
 // module: A, B or even in a library!
-@ServiceProvider
+@Provides(SimpleService::class)
 object SimpleServiceImpl : SimpleService {
     override fun saySomethingSweet() {
         println("Kotlin is Awesome")
@@ -19,8 +19,8 @@ object SimpleServiceImpl : SimpleService {
 
 // module: A, B, C or may be not even in your codebase...
 fun main() {
-    ServiceLoader.load<SimpleService>().forEach { service ->
-        service.saySomethingSweet()
+    ServiceLoader.load<SimpleService>().forEach { provider ->
+        provider.value.saySomethingSweet()
     }
 }
 ```
