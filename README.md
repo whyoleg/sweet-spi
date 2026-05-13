@@ -1,5 +1,10 @@
 # sweet-spi
 
+> [!CAUTION]
+> The project is currently not actively maintained, and is in the process of rewriting its logic from KSP to Kotlin Compiler Plugin.
+>
+> See https://github.com/whyoleg/sweet-spi/issues/21 for current status and future plans.
+
 Simple SPI (Service Provider Interface) for Kotlin Multiplatform (equivalent of JVM's Service Loader)
 
 ```kotlin
