@@ -19,37 +19,31 @@ public interface InternalServiceModule {
     public fun providers(cls: KClass<*>): List<*>
 }
 
-@InternalSweetSpiApi
-internal expect val internalServiceLoader: Lazy<InternalServiceLoader>
-
 internal expect open class SynchronizedObject()
 
 internal expect inline fun <T> synchronized(lock: SynchronizedObject, block: () -> T): T
 
 @InternalSweetSpiApi
-internal class InternalServiceLoader(
-    private val modules: List<InternalServiceModule>,
-) : SynchronizedObject() {
-    private val registeredServices: Set<KClass<*>> = modules.flatMapTo(mutableSetOf(), InternalServiceModule::services)
-    private val providers = mutableMapOf<KClass<*>, List<*>>()
+internal expect fun getAvailableModules(): List<InternalServiceModule>
 
-    init {
-        // this could happen mostly if there is something wrong with KSP or runtime code
-        modules.forEach { module ->
-            module.requiredServices.forEach { required ->
-                if (required !in registeredServices) {
-                    println("Service `${required.simpleName}` wasn't registered, required by: $module")
-                }
-            }
-        }
+@InternalSweetSpiApi
+internal object InternalServiceLoader : SynchronizedObject() {
+    private val providerCache = mutableMapOf<Pair<KClass<out InternalServiceModule>, KClass<*>>, List<*>>()
+
+    internal fun <T : Any> getProviders(module: InternalServiceModule, service: KClass<T>, reload: Boolean = false): List<T> {
+        val original = if (reload) null else providerCache[module::class to service]
+        @Suppress("UNCHECKED_CAST") val value = (original ?: module.providers(service)) as List<T>
+        providerCache[module::class to service] = value
+        return value
     }
 
-    fun <T : Any> load(cls: KClass<T>): List<T> {
-        require(cls in registeredServices) { "Service `${cls.simpleName}` wasn't registered" }
+    fun <T : Any> load(cls: KClass<T>, reloadProviders: Boolean = false): List<T> {
+        return load(getAvailableModules(), cls, reloadProviders)
+    }
 
-        @Suppress("UNCHECKED_CAST")
+    fun <T : Any> load(modules: List<InternalServiceModule>, cls: KClass<T>, reloadProviders: Boolean = false): List<T> {
         return synchronized(this) {
-            providers.getOrPut(cls) { modules.flatMap { it.providers(cls) } } as List<T>
+            modules.flatMap { getProviders(it, cls, reloadProviders) }
         }
     }
 }

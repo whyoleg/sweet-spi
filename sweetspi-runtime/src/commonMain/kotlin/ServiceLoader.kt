@@ -97,11 +97,11 @@ public object ServiceLoader {
      */
     @JvmStatic
     @OptIn(InternalSweetSpiApi::class)
-    public fun <T : Any> load(cls: KClass<T>): List<T> = internalServiceLoader.value.load(cls)
+    public fun <T : Any> load(cls: KClass<T>, reloadProviders: Boolean = false): List<T> = InternalServiceLoader.load(cls, reloadProviders)
 
     /**
      * Retrieves a list of services of the specified type [T], which must be annotated with [Service].
      * Providers of these services must be annotated with [ServiceProvider].
      */
-    public inline fun <reified T : Any> load(): List<T> = load(T::class)
+    public inline fun <reified T : Any> load(reloadProviders: Boolean = false): List<T> = load(T::class, reloadProviders)
 }
