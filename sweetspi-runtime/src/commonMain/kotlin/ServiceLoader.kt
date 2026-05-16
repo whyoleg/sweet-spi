@@ -23,19 +23,36 @@ import kotlin.reflect.*
  *
  * #### JVM
  *
- * Depending on [compatibleWithJavaServiceLoader]:
- * - `false`: the service could be loaded **only** via [ServiceLoader.load].
- * - `true`: the service could be loaded via `java.util.ServiceLoader`.
- *   In this case, some Kotlin features will not be available;
- *   for example, the service could not be [provided][Provides] via an `object`, `function`, or `property`.
+ * Depending on [javaServiceLoaderCompatibilityMode]:
+ * - [JavaServiceLoaderCompatibilityMode.NO_COMPATIBILITY]: the service should be loaded **only** via [ServiceLoader.load].
+ *     Could be provided by Kotlin consumers only.
+ *     (single call to JSL: X$ServiceProvider)
+ *     [Provides] will use X$ServiceProvider.
+ * - [JavaServiceLoaderCompatibilityMode.PROVIDE_COMPATIBILITY]: the service should be loaded **only** via [ServiceLoader.load].
+ *     Could be provided by both Java and Kotlin consumers.
+ *     (two calls to JSL: one with X and one with X$ServiceProvider).
+ *     [Provides] will use X$ServiceProvider.
+ * - [JavaServiceLoaderCompatibilityMode.FULL_COMPATIBILITY]: the service could be loaded by both `java.util.ServiceLoader` and [ServiceLoader.load].
+ *     Could be provided by both Java and Kotlin consumers.
+ *     (single call to JSL: X).
+ *     [Provides] will use X
+ *     Not all Kotlin features will be supported, like providing via objects or functions without JPMS or ServiceInfo.
  */
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME) // runtime needed for JVM only
-public annotation class Service(val compatibleWithJavaServiceLoader: Boolean = false)
+public annotation class Service(
+    val javaServiceLoaderCompatibilityMode: JavaServiceLoaderCompatibilityMode = JavaServiceLoaderCompatibilityMode.NO_COMPATIBILITY,
+)
+
+public enum class JavaServiceLoaderCompatibilityMode {
+    NO_COMPATIBILITY,
+    PROVIDE_COMPATIBILITY,
+    FULL_COMPATIBILITY,
+}
 
 /**
- * This annotation is used to identify which service(s) the annotated element provides an instance for.
+ * This annotation is used to identify which service the annotated element provides an instance for.
  *
  * This annotation can be applied to the following targets:
  * - [AnnotationTarget.CLASS]: Applicable to objects or classes with:
@@ -53,7 +70,6 @@ public annotation class Service(val compatibleWithJavaServiceLoader: Boolean = f
  * }
  * ```
  */
-@Repeatable
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS, AnnotationTarget.PROPERTY, AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
@@ -62,17 +78,10 @@ public annotation class Provides(public val service: KClass<*>)
 // allows providing services without `@Service` annotation - just for compatibility
 // no checks, just META-INF generation
 // error if interface has `@Service` annotation
-@Repeatable
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.BINARY)
 public annotation class JvmProvides(public val service: KClass<*>)
-
-// same as in JDK, same as in a lot of DIs, where Provider<T> = () -> T
-public interface ServiceProvider<T : Any> : Lazy<T> {
-    // type of the real instance (or type of the method returning an instance)
-    public val type: KClass<out T>
-}
 
 /**
  * Provides functionality for dynamically loading service implementations using the Service Provider Interface (SPI) mechanism.
@@ -127,39 +136,10 @@ public expect open class ServiceLoader {
     public fun <T : Any> load(type: KClass<T>): Sequence<ServiceProvider<T>>
 }
 
-// test usage
-//@Service
-//public interface X {
-//    public interface `$ServiceProvider` : ServiceProvider<X>
-//}
-//
-//@Service
-//public interface Y {
-//    public interface `$ServiceProvider` : ServiceProvider<Y>
-//}
-//
-//@Provides(X::class)
-//@Provides(Y::class)
-//public object XY_Impl : X, Y {
-//    internal class `$dev_whyoleg_sweetspi_X$ServiceProvider` : X.`$ServiceProvider` {
-//        override val type: KClass<out X>
-//            get() = XY_Impl::class
-//
-//        // delegate should be generated in a body: in case `XY_Impl` is a class, we should create new instance of a class every time we call `load`
-//        // this is needed to mimic Java ServiceLoader behavior
-//        private val delegate = lazy { XY_Impl }
-//        override val value: X get() = delegate.value
-//        override fun isInitialized(): Boolean = delegate.isInitialized()
-//    }
-//
-//    internal class `$Provider$dev_whyoleg_sweetspi_Y` : Y.`$Provider` {
-//        override val type: KClass<out Y>
-//            get() = XY_Impl::class
-//
-//        // delegate should be generated in a body: in case `XY_Impl` is a class, we should create new instance of a class every time we call `load`
-//        // this is needed to mimic Java ServiceLoader behavior
-//        private val delegate = lazy { XY_Impl }
-//        override val value: Y get() = delegate.value
-//        override fun isInitialized(): Boolean = delegate.isInitialized()
-//    }
-//}
+// same as in JDK, same as in a lot of DIs, where Provider<T> = () -> T
+public interface ServiceProvider<T : Any> : Lazy<T> {
+    // type of the real instance (or type of the method returning an instance)
+    // TODO: is it useful really? if we will have `@ServiceInfo`, we could also add those annotation to functions/properties of providers.
+    // in reality, users should not care about "implementation" details, but only about some additional metadata (like `@ServiceInfo`) that can be used for introspection or debugging.
+    public val type: KClass<out T>
+}

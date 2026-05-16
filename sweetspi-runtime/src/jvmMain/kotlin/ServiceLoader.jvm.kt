@@ -12,12 +12,12 @@ import java.util.ServiceLoader as JavaServiceLoader
 
 public actual open class ServiceLoader private constructor(
     private val classLoader: ClassLoader?,
-    private val moduleLoader: ModuleLayer?, // TODO: check if this works fine
+    private val moduleLayer: ModuleLayer?, // TODO: check if this works fine
 ) {
     public actual companion object Default : ServiceLoader(null, null)
 
     public constructor(classLoader: ClassLoader) : this(classLoader, null)
-    public constructor(moduleLoader: ModuleLayer) : this(null, moduleLoader)
+    public constructor(moduleLayer: ModuleLayer) : this(null, moduleLayer)
 
     public actual inline fun <reified T : Any> load(): Sequence<ServiceProvider<T>> = load(T::class)
     public actual fun <T : Any> load(type: KClass<T>): Sequence<ServiceProvider<T>> = load(type.java)
@@ -31,18 +31,16 @@ public actual open class ServiceLoader private constructor(
         false
     }
 
-    private fun <T : Any> loadImpl(cls: Class<T>): Sequence<ServiceProvider<T>> = when {
-        compatibleWithJavaServiceLoader(cls) -> when {
-            hasServiceLoaderProvider -> loadProvidersSequence(cls).map(::JavaProviderWrapper)
-            else                     -> loadSequence(cls).map(::InstanceProviderWrapper)
-        }
-        else                                 -> loadSequence(getProviderClass(cls))
+    private fun <T : Any> loadImpl(cls: Class<T>): Sequence<ServiceProvider<T>> = when (javaServiceLoaderCompatibilityMode(cls)) {
+        JavaServiceLoaderCompatibilityMode.NO_COMPATIBILITY         -> loadKotlinSequence(cls)
+        JavaServiceLoaderCompatibilityMode.FULL_COMPATIBILITY, null -> loadJavaSequence(cls)
+        JavaServiceLoaderCompatibilityMode.PROVIDE_COMPATIBILITY    -> loadKotlinSequence(cls) + loadJavaSequence(cls)
     }
 
-    private fun <T> loader(cls: Class<T>): JavaServiceLoader<T> = when {
-        classLoader != null  -> JavaServiceLoader.load(cls, classLoader)
-        moduleLoader != null -> JavaServiceLoader.load(moduleLoader, cls)
-        else                 -> JavaServiceLoader.load(cls, cls.classLoader)
+    private fun <T : Any> loadKotlinSequence(cls: Class<T>): Sequence<ServiceProvider<T>> = loadSequence(getProviderClass(cls))
+    private fun <T : Any> loadJavaSequence(cls: Class<T>): Sequence<ServiceProvider<T>> = when {
+        hasServiceLoaderProvider -> loadProvidersSequence(cls).map(::JavaProviderWrapper)
+        else                     -> loadSequence(cls).map(::InstanceProviderWrapper)
     }
 
     private fun <T : Any> loadSequence(cls: Class<T>): Sequence<T> {
@@ -53,12 +51,18 @@ public actual open class ServiceLoader private constructor(
         return loader(cls).stream().asSequence().constrainOnce()
     }
 
-    private fun <T : Any> compatibleWithJavaServiceLoader(cls: Class<T>): Boolean {
-        return cls.getAnnotation(Service::class.java)?.compatibleWithJavaServiceLoader != false
+    private fun <T> loader(cls: Class<T>): JavaServiceLoader<T> = when {
+        classLoader != null -> JavaServiceLoader.load(cls, classLoader)
+        moduleLayer != null -> JavaServiceLoader.load(moduleLayer, cls)
+        else                -> JavaServiceLoader.load(cls, cls.classLoader)
+    }
+
+    private fun <T : Any> javaServiceLoaderCompatibilityMode(cls: Class<T>): JavaServiceLoaderCompatibilityMode? {
+        return cls.getAnnotation(Service::class.java)?.javaServiceLoaderCompatibilityMode
     }
 
     private fun <T : Any> getProviderClass(cls: Class<T>): Class<out ServiceProvider<T>> {
-        val providerCls = cls.declaredClasses.firstOrNull { it.simpleName == $$"$Provider" }
+        val providerCls = cls.declaredClasses.firstOrNull { it.simpleName == $$"$ServiceProvider" }
             ?: error("Cannot find provider class for $cls")
         @Suppress("UNCHECKED_CAST")
         return providerCls as Class<out ServiceProvider<T>>
@@ -80,3 +84,5 @@ public actual open class ServiceLoader private constructor(
         override fun isInitialized(): Boolean = true
     }
 }
+
+public actual typealias ServiceProviderType<T> = KClass<T>
