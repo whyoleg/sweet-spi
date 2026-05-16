@@ -26,6 +26,8 @@ kotlin {
 dependencies {
     compileOnly(kotlin("stdlib"))
     compileOnly(kotlin("gradle-plugin"))
+
+    testImplementation(kotlin("test"))
 }
 
 @Suppress("UnstableApiUsage")
