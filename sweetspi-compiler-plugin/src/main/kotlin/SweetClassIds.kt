@@ -8,11 +8,17 @@ import org.jetbrains.kotlin.name.*
 
 object SweetClassIds {
     private val pkg = FqName("dev.whyoleg.sweetspi")
-    val Service = ClassId(pkg, Name.identifier("Service"))
-    val ServiceProvider = ClassId(pkg, Name.identifier("ServiceProvider"))
-    val ServiceLoader = ClassId(pkg, Name.identifier("ServiceLoader"))
-    val ServiceLoaderProvider = ServiceLoader.createNestedClassId(Name.identifier("Provider"))
+    private fun classId(name: String): ClassId = ClassId(pkg, Name.identifier(name))
+    val Service = classId("Service")
+    val Provides = classId("Provides")
+    val ServiceLoader = classId("ServiceLoader")
+    val ServiceProvider = classId("ServiceProvider")
+    val ServiceProviderRegistry = classId("ServiceProviderRegistry")
+    val ServiceProviderRegistryHolder = classId("ServiceProviderRegistryHolder")
+}
 
-    // klib only
-    val ServiceLoaderRegistry = ServiceLoader.createNestedClassId(Name.identifier("Registry"))
+// nested classes
+object SweetNames {
+    val SERVICE_PROVIDER_NAME = Name.identifier($$"$ServiceProvider")
+    val SERVICE_PROVIDER_REGISTRY_NAME = Name.identifier($$"$ServiceProviderRegistry")
 }

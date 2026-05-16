@@ -9,5 +9,7 @@ import org.jetbrains.kotlin.fir.analysis.extensions.*
 
 // checkers that annotations are applied to correct functions/properties/classes
 class SweetFirCheckers(session: FirSession) : FirAdditionalCheckersExtension(session) {
-
+    // check that one class is not annotated with both @Provides and @Service
+    // check that @Provides argument is annotated with @Service
+    // check that @JvmProvides argument is NOT annotated with @Service
 }

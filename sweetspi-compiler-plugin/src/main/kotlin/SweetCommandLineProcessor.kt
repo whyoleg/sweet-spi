@@ -38,7 +38,7 @@ class SweetCommandLineProcessor : CommandLineProcessor {
             optionName = "resourcesPath",
             valueDescription = "<path>",
             description = SweetConfigurationKeys.RESOURCES_PATH.toString(),
-            required = true,
+            required = false, // only for JVM
             allowMultipleOccurrences = false,
         )
     }
@@ -54,7 +54,7 @@ class SweetCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
         IrGenerationExtension.registerExtension(
             SweetIrGenerationExtension(
-                resourcesPath = configuration.getNotNull(SweetConfigurationKeys.RESOURCES_PATH)
+                resourcesPath = configuration.get(SweetConfigurationKeys.RESOURCES_PATH)
             )
         )
     }

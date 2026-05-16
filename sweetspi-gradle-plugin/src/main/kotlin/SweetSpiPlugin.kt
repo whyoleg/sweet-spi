@@ -63,22 +63,25 @@ public abstract class SweetSpiPlugin @Inject constructor(
 
     override fun applyToCompilation(kotlinCompilation: KotlinCompilation<*>): Provider<List<SubpluginOption>> {
         val project = kotlinCompilation.target.project
-
-        val resourcesPath = project.layout.buildDirectory.dir(
-            "generated/sweetspi/${kotlinCompilation.defaultSourceSet.name}/resources"
-        )
-        // cross-link compilation and resource processing tasks via resources dir output
-        kotlinCompilation.compileTaskProvider.configure {
-            it.outputs.dir(resourcesPath).withPropertyName("sweetspi.resourcesPath")
-        }
-        kotlinCompilation.defaultSourceSet.resources.srcDir(
-            kotlinCompilation.compileTaskProvider.map { resourcesPath.get() }
-        )
-
-        return project.provider {
-            listOf(
-                SubpluginOption("resourcesPath", resourcesPath.get().toString())
-            )
+        return when (kotlinCompilation.target.platformType) {
+            KotlinPlatformType.jvm, KotlinPlatformType.androidJvm -> {
+                val resourcesPath = project.layout.buildDirectory.dir(
+                    "generated/sweetspi/${kotlinCompilation.defaultSourceSet.name}/resources"
+                )
+                // cross-link compilation and resource processing tasks via resources dir output
+                kotlinCompilation.compileTaskProvider.configure {
+                    it.outputs.dir(resourcesPath).withPropertyName("sweetspi.resourcesPath")
+                }
+                kotlinCompilation.defaultSourceSet.resources.srcDir(
+                    kotlinCompilation.compileTaskProvider.map { resourcesPath.get() }
+                )
+                project.provider {
+                    listOf(
+                        SubpluginOption("resourcesPath", resourcesPath.get().toString())
+                    )
+                }
+            }
+            else                                                  -> project.provider { emptyList() }
         }
     }
 }

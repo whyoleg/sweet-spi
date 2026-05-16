@@ -16,6 +16,12 @@ mavenPublishing {
     configure(KotlinJvm())
 }
 
+kotlin {
+    compilerOptions {
+        optIn.add("org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI")
+    }
+}
+
 dependencies {
     compileOnly(kotlin("stdlib"))
     compileOnly(kotlin("compiler-embeddable"))
