@@ -84,5 +84,3 @@ public actual open class ServiceLoader private constructor(
         override fun isInitialized(): Boolean = true
     }
 }
-
-public actual typealias ServiceProviderType<T> = KClass<T>

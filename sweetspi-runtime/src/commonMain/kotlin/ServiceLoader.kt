@@ -70,6 +70,7 @@ public enum class JavaServiceLoaderCompatibilityMode {
  * }
  * ```
  */
+@Repeatable
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS, AnnotationTarget.PROPERTY, AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
@@ -78,6 +79,7 @@ public annotation class Provides(public val service: KClass<*>)
 // allows providing services without `@Service` annotation - just for compatibility
 // no checks, just META-INF generation
 // error if interface has `@Service` annotation
+@Repeatable
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.BINARY)
