@@ -7,20 +7,20 @@ package dev.whyoleg.sweetspi.compiler
 import org.jetbrains.kotlin.backend.common.extensions.*
 import org.jetbrains.kotlin.builtins.*
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.expressions.impl.IrAnnotationImpl
-import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
+import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.symbols.*
-import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.name.*
-import kotlin.collections.plus
+import org.jetbrains.kotlin.platform.*
+import org.jetbrains.kotlin.platform.konan.*
 
 val SweetOrigin: IrDeclarationOrigin = IrDeclarationOriginImpl("SWEET_SPI", isSynthetic = true)
 
 sealed class SweetIrPluginContext(context: IrPluginContext) : IrPluginContext by context {
     val anyConstructor = irBuiltIns.anyClass.owner.constructors.single()
     val publishedApiClass = finderForBuiltins().findClass(StandardClassIds.Annotations.PublishedApi)!!
-    val serviceProviderClass = finderForBuiltins().findClass(SweetClassIds.ServiceProvider)!!
+    val serviceProviderClass = finderForBuiltins().findClass(SweetNames.ServiceProvider)!!
 
     // lazy
     val lazyFunctionSymbol = finderForBuiltins().findFunctions(
@@ -38,20 +38,30 @@ sealed class SweetIrPluginContext(context: IrPluginContext) : IrPluginContext by
 class JvmSweetIrPluginContext(context: IrPluginContext) : SweetIrPluginContext(context)
 
 class KlibSweetIrPluginContext(context: IrPluginContext) : SweetIrPluginContext(context) {
-    val serviceProviderRegistryHolderClass = finderForBuiltins().findClass(SweetClassIds.ServiceProviderRegistryHolder)!!
-    val serviceProviderRegistryClass = finderForBuiltins().findClass(SweetClassIds.ServiceProviderRegistry)!!
-    val serviceProviderRegistryConstructor = finderForBuiltins().findConstructors(SweetClassIds.ServiceProviderRegistry).single()
+    val serviceProviderRegistryHolderClass = finderForBuiltins().findClass(SweetNames.ServiceProviderRegistryHolder)!!
+    val serviceProviderRegistryClass = finderForBuiltins().findClass(SweetNames.ServiceProviderRegistry)!!
+    val serviceProviderRegistryConstructor = finderForBuiltins().findConstructors(SweetNames.ServiceProviderRegistry).single()
     val serviceProviderRegistryRegister = finderForBuiltins().findFunctions(
-        CallableId(SweetClassIds.ServiceProviderRegistry, Name.identifier("register"))
+        CallableId(SweetNames.ServiceProviderRegistry, Name.identifier("register"))
     ).single()
 
     // eager init
-    // TODO: depends on platform
     val eagerInitializationClass = finderForBuiltins().findClass(
-        ClassId(
-            packageFqName = FqName("kotlin.native"),
-            topLevelName = Name.identifier("EagerInitialization")
-        )
+        when {
+            context.platform.isNative() -> ClassId(
+                packageFqName = FqName("kotlin.native"),
+                topLevelName = Name.identifier("EagerInitialization")
+            )
+            context.platform.isJs()     -> ClassId(
+                packageFqName = FqName("kotlin.js"),
+                topLevelName = Name.identifier("EagerInitialization")
+            )
+            context.platform.isWasm()   -> ClassId(
+                packageFqName = FqName("kotlin"),
+                topLevelName = Name.identifier("EagerInitialization")
+            )
+            else                        -> error("Unsupported platform: ${context.platform}")
+        }
     )!!
 }
 
