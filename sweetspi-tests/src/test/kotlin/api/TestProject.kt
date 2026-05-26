@@ -14,7 +14,7 @@ class TestProject(
     val projectDirectory: Path,
 )
 
-val TaskOutcome.isPositive get() = this in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE)
+val TaskOutcome.isPositive get() = this in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE, TaskOutcome.UP_TO_DATE)
 
 context(project: TestProject)
 fun gradle(vararg arguments: String, expectFailure: Boolean = false, block: BuildResult.() -> Unit) {

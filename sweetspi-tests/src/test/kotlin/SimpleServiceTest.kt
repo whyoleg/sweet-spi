@@ -52,6 +52,9 @@ class SimpleServiceTest : TestProjectBasedTest() {
             kotlin {
                 jvm()
                 macosArm64()
+                js { nodejs() }
+                wasmJs { nodejs() }
+                wasmWasi { nodejs() }
             }
             """.trimIndent()
         )
@@ -86,6 +89,9 @@ class SimpleServiceTest : TestProjectBasedTest() {
         gradle(":updateKotlinAbi", ":check") {
             assertTrue(task(":jvmTest")!!.outcome.isPositive)
             assertTrue(task(":macosArm64Test")!!.outcome.isPositive)
+            assertTrue(task(":jsNodeTest")!!.outcome.isPositive)
+            assertTrue(task(":wasmJsNodeTest")!!.outcome.isPositive)
+            assertTrue(task(":wasmWasiNodeTest")!!.outcome.isPositive)
         }
     }
 }

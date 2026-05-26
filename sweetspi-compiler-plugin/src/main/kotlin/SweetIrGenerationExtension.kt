@@ -338,6 +338,7 @@ private class ServiceProviderInitializerGenerator(
                 parent = irClass.file
                 annotateWith(pluginContext.eagerInitializationClass)
                 addBackingField {
+                    isStatic = true // without it - it doesn't work on js/wasm
                     isFinal = true
                     type = pluginContext.irBuiltIns.unitType
                 }.apply {
