@@ -38,48 +38,28 @@ import kotlin.io.path.*
 class SweetIrGenerationExtension(
     private val resourcesPath: Path?,
 ) : IrGenerationExtension {
-    override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
-        when {
-            pluginContext.platform.isJvm() -> generateJvm(moduleFragment, JvmSweetIrPluginContext(pluginContext))
-            else                           -> generateKlib(moduleFragment, KlibSweetIrPluginContext(pluginContext))
-        }
+    override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext): Unit = when {
+        pluginContext.platform.isJvm() -> generateJvm(moduleFragment, JvmSweetIrPluginContext(pluginContext))
+        else                           -> generateKlib(moduleFragment, KlibSweetIrPluginContext(pluginContext))
     }
 
     private fun generateKlib(moduleFragment: IrModuleFragment, pluginContext: KlibSweetIrPluginContext) {
-        val generatedProviders = mutableMapOf<ClassId, IrClassSymbol>()
-        val generatedRegistries = mutableMapOf<ClassId, IrClassSymbol>()
-        val generatedProviderImplementations = mutableMapOf<ClassId, MutableSet<ClassId>>()
-
         // @Service
-        ServiceProviderGenerator(pluginContext, generatedProviders).lower(moduleFragment)
-        ServiceProviderRegistryGenerator(pluginContext, generatedRegistries).lower(moduleFragment)
+        ServiceProviderGenerator(pluginContext).lower(moduleFragment)
+        ServiceProviderRegistryGenerator(pluginContext).lower(moduleFragment)
 
         // @Provides
-        ServiceProviderImplementationGenerator(
-            pluginContext,
-//            generatedProviders,
-            generatedProviderImplementations
-        ).lower(moduleFragment)
-        ServiceProviderInitializerGenerator(
-            pluginContext,
-//            generatedProviders,
-//            generatedRegistries,
-//            generatedProviderImplementations,
-        ).lower(moduleFragment)
+        ServiceProviderImplementationGenerator(pluginContext, mutableMapOf()/*we don't use them here*/).lower(moduleFragment)
+        ServiceProviderInitializerGenerator(pluginContext).lower(moduleFragment)
     }
 
     private fun generateJvm(moduleFragment: IrModuleFragment, pluginContext: JvmSweetIrPluginContext) {
         requireNotNull(resourcesPath) { "resourcesPath cannot be null" }
 
-        val generatedProviders = mutableMapOf<ClassId, IrClassSymbol>()
         val generatedProviderImplementations = mutableMapOf<ClassId, MutableSet<ClassId>>()
 
-        ServiceProviderGenerator(pluginContext, generatedProviders).lower(moduleFragment)
-        ServiceProviderImplementationGenerator(
-            pluginContext,
-//            generatedProviders,
-            generatedProviderImplementations
-        ).lower(moduleFragment)
+        ServiceProviderGenerator(pluginContext).lower(moduleFragment)
+        ServiceProviderImplementationGenerator(pluginContext, generatedProviderImplementations).lower(moduleFragment)
 
         generateJvmServices(resourcesPath, generatedProviderImplementations)
     }
@@ -109,7 +89,6 @@ class SweetIrGenerationExtension(
 
 private class ServiceProviderGenerator(
     private val pluginContext: SweetIrPluginContext,
-    private val generatedProviders: MutableMap<ClassId, IrClassSymbol>,
 ) : ClassLoweringPass {
     override fun lower(irClass: IrClass) {
         if (!irClass.hasAnnotation(SweetNames.Service)) return
@@ -125,16 +104,12 @@ private class ServiceProviderGenerator(
 
             annotateWith(pluginContext.publishedApiClass)
             superTypes += pluginContext.serviceProviderClass.typeWith(irClass.defaultType)
-
-            // save it
-            generatedProviders[classIdOrFail] = symbol
         }
     }
 }
 
 private class ServiceProviderRegistryGenerator(
     private val pluginContext: KlibSweetIrPluginContext,
-    private val generatedRegistries: MutableMap<ClassId, IrClassSymbol>,
 ) : ClassLoweringPass {
     override fun lower(irClass: IrClass) {
         if (!irClass.hasAnnotation(SweetNames.Service)) return
@@ -151,9 +126,6 @@ private class ServiceProviderRegistryGenerator(
 
             annotateWith(pluginContext.publishedApiClass)
             superTypes += pluginContext.serviceProviderRegistryClass.typeWith(irClass.defaultType)
-
-            // save it
-            generatedRegistries[classIdOrFail] = symbol
         }
 
         registryClass.addConstructor {
@@ -279,7 +251,7 @@ private class ServiceProviderImplementationGenerator(
                                 startOffset = startOffset,
                                 endOffset = endOffset,
                                 type = returnType,
-                                symbol = context.irBuiltIns.kClassClass,
+                                symbol = irClass.symbol,
                                 classType = irClass.defaultType
                             )
                         )
@@ -321,9 +293,6 @@ private class ServiceProviderImplementationGenerator(
 
 private class ServiceProviderInitializerGenerator(
     private val pluginContext: KlibSweetIrPluginContext,
-//    private val generatedProviders: Map<ClassId, IrClassSymbol>,
-//    private val generatedRegistries: Map<ClassId, IrClassSymbol>,
-//    private val generatedProviderImplementations: Map<ClassId, MutableSet<ClassId>>,
 ) : ClassLoweringPass {
     private val currentFileInitializers = mutableListOf<IrProperty>()
 
@@ -348,14 +317,10 @@ private class ServiceProviderInitializerGenerator(
             val providerClassSymbol =
                 serviceClassSymbol.owner.findDeclaration<IrClass> { it.name == SweetNames.ServiceProviderName }?.symbol
                     ?: error("Provider class not found for service type: $serviceClassId")
-//            val providerClassId = providerClassSymbol.owner.classIdOrFail
-//            val providerType = providerClassSymbol.defaultType
 
             val registryClassSymbol =
                 serviceClassSymbol.owner.findDeclaration<IrClass> { it.name == SweetNames.ServiceProviderRegistryName }?.symbol
                     ?: error("Registry class not found for service type: $serviceClassId")
-
-//            val registryClassId = registryClassSymbol.owner.classIdOrFail
 
             // find the provider implementation class (nested $ServiceProvider inside the @Provides class)
             val providerImplClass =
