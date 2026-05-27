@@ -149,7 +149,10 @@ private class ServiceProviderRegistryGenerator(
     }
 }
 
+// TODO: all of those should be checked in FIR too
 // TODO: we need to also lower functions/properties
+// TODO: for top-level functions/properties we could support `private` declarations too
+// TODO: provider implementation as top-level (not nested) - needed for functions/properties initializers
 // TODO: support JvmProvides
 // TODO: JVM annotation flag handling!!!
 private class ServiceProviderImplementationGenerator(
@@ -207,8 +210,17 @@ private class ServiceProviderImplementationGenerator(
                     val initializer = if (irClass.isObject) {
                         irGetObject(irClass.symbol)
                     } else {
-                        // TODO find correct constructor
-                        irCall(irClass.constructors.single { it.parameters.isEmpty() })
+                        val visibleConstructors = irClass.constructors.filter {
+                            // take only visible constructors
+                            it.visibility == DescriptorVisibilities.PUBLIC || it.visibility == DescriptorVisibilities.INTERNAL
+                        }.toList()
+                        // take only constructors with no parameters (first) or all default ones (fallback)
+                        val constructor = visibleConstructors.firstOrNull {
+                            it.parameters.isEmpty()
+                        } ?: visibleConstructors.firstOrNull {
+                            it.parameters.all { it.defaultValue != null }
+                        } ?: error("No suitable constructor found for ${irClass.name}") // should be handled in FIR
+                        irCall(constructor)
                     }
                     +irReturn(initializer)
                 }

@@ -17,12 +17,24 @@ class TestProject(
 val TaskOutcome.isPositive get() = this in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE, TaskOutcome.UP_TO_DATE)
 
 context(project: TestProject)
-fun gradle(vararg arguments: String, expectFailure: Boolean = false, block: BuildResult.() -> Unit) {
-    val runner = GradleRunner.create()
-        .withProjectDir(project.projectDirectory.toFile())
-        .forwardOutput()
-        .withArguments("--stacktrace", *arguments)
-
+fun gradle(
+    vararg arguments: String,
+    expectFailure: Boolean = false,
+    forwardOutput: Boolean = true,
+    rerunTasks: Boolean = false, // useful for debugging tests
+    block: BuildResult.() -> Unit = {},
+) {
+    val runner = GradleRunner.create().apply {
+        withProjectDir(project.projectDirectory.toFile())
+        if (forwardOutput) {
+            forwardOutput()
+        }
+        withArguments(buildList {
+            add("--stacktrace")
+            addAll(arguments)
+            if (rerunTasks) add("--rerun-tasks")
+        })
+    }
     val result = when {
         expectFailure -> runner.buildAndFail()
         else          -> runner.build()
@@ -61,9 +73,15 @@ fun bootstrapKotlinMultiplatformProject() {
 
     file("build.gradle.kts").kts(
         """
+        import org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation
+
         plugins {
             alias(libs.plugins.kotlin.multiplatform)
             alias(libs.plugins.sweetspi)
+        }
+        @OptIn(ExperimentalAbiValidation::class)
+        kotlin {
+            abiValidation { enabled = true }
         }
         kotlin { 
             sourceSets.commonTest.dependencies { 
@@ -77,15 +95,16 @@ fun bootstrapKotlinMultiplatformProject() {
 
 context(project: TestProject)
 private fun bootstrapGradleProject() {
-    val devArtifactsRepositories =
+    file("gradle.properties").writeText(
         """
-        exclusiveContent {
-            filter { includeGroup("dev.whyoleg.sweetspi") }
-            forRepositories(
-                ${TestsArguments.devArtifactsDirectories.joinToString(",\n        ") { "maven(\"$it\")" }}
-            )
-        }
+        org.gradle.parallel=true
+        org.gradle.caching=true
+        org.gradle.configuration-cache=true
+        org.gradle.configuration-cache.parallel=true
+        org.gradle.jvmargs=-Xmx2g
+        
         """.trimIndent()
+    )
     file("gradle/libs.versions.toml").writeText(
         """
         [versions]
@@ -96,34 +115,37 @@ private fun bootstrapGradleProject() {
         kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
         kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
         sweetspi = { id = "dev.whyoleg.sweetspi", version.ref = "sweetspi" }
+        
         """.trimIndent()
     )
+
+    val devArtifactsRepositories =
+        """
+        |exclusiveContent {
+        |    filter { includeGroup("dev.whyoleg.sweetspi") }
+        |    forRepositories(
+        |        ${TestsArguments.devArtifactsDirectories.joinToString(",\n|        ") { "maven(\"$it\")" }}
+        |    )
+        |}
+        """.trimMargin().alignMargin("|        ") // to be aligned in `settings.gradle.kts`
     file("settings.gradle.kts").kts(
         """
-        pluginManagement {
-            repositories {
-                $devArtifactsRepositories
-                mavenCentral()
-                gradlePluginPortal()
-            }
-        }
-
-        dependencyResolutionManagement {
-            repositories {
-                $devArtifactsRepositories
-                mavenCentral()
-            }
-        }
-        """.trimIndent()
-    )
-    file("gradle.properties").writeText(
-        """
-        org.gradle.parallel=true
-        org.gradle.caching=true
-        org.gradle.configuration-cache=true
-        org.gradle.configuration-cache.parallel=true
-        org.gradle.jvmargs=-Xmx2g
-        """.trimIndent()
+        |pluginManagement {
+        |    repositories {
+        |        $devArtifactsRepositories
+        |        mavenCentral()
+        |        gradlePluginPortal()
+        |    }
+        |}
+        |
+        |dependencyResolutionManagement {
+        |    repositories {
+        |        $devArtifactsRepositories
+        |        mavenCentral()
+        |    }
+        |}
+        |
+        """.trimMargin()
     )
 }
 
@@ -145,3 +167,5 @@ context(project: TestProject)
 fun Path.kts(
     @Language("kotlin") code: String,
 ): Unit = writeText(code)
+
+fun String.alignMargin(prefix: String = "|"): String = lines().joinToString("\n$prefix")
