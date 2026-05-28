@@ -11,7 +11,7 @@ object SweetNames {
     private fun classId(name: String): ClassId = ClassId(pkg, Name.identifier(name))
     val Service = classId("Service")
     val Provides = classId("Provides")
-    val ServiceLoader = classId("ServiceLoader")
+
     val ServiceProvider = classId("ServiceProvider")
     val ServiceProviderRegistry = classId("ServiceProviderRegistry")
     val ServiceProviderRegistryHolder = classId("ServiceProviderRegistryHolder")
@@ -29,6 +29,16 @@ object SweetNames {
         serviceImplClassId: ClassId,
     ): Name = Name.identifier(
         $$"$ServiceProviderInitializer$$${serviceClassId.sanitize()}$$${serviceImplClassId.sanitize()}"
+    )
+
+    private val ServiceLoader = classId("ServiceLoader")
+    private val ServiceLoaderLoad = CallableId(ServiceLoader, Name.identifier("load"))
+    private val JavaServiceLoader = ClassId(FqName("java.util"), Name.identifier("ServiceLoader"))
+    private val JavaServiceLoaderLoad = CallableId(JavaServiceLoader, Name.identifier("load"))
+
+    val AllServiceLoaderCalls = setOf(
+        ServiceLoaderLoad,
+        JavaServiceLoaderLoad
     )
 
     private fun ClassId.sanitize(): String = asFqNameString().replace('.', '_')

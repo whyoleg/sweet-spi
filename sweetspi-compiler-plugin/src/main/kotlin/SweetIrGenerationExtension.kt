@@ -13,9 +13,9 @@ import org.jetbrains.kotlin.ir.builders.declarations.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.*
-import org.jetbrains.kotlin.ir.symbols.*
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.visitors.*
 import org.jetbrains.kotlin.name.*
 import org.jetbrains.kotlin.platform.jvm.*
 import java.nio.file.*
@@ -37,6 +37,7 @@ import kotlin.io.path.*
  */
 class SweetIrGenerationExtension(
     private val resourcesPath: Path?,
+    private val moduleInfoPropertiesPath: Path?,
 ) : IrGenerationExtension {
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext): Unit = when {
         pluginContext.platform.isJvm() -> generateJvm(moduleFragment, JvmSweetIrPluginContext(pluginContext))
@@ -45,49 +46,137 @@ class SweetIrGenerationExtension(
 
     private fun generateKlib(moduleFragment: IrModuleFragment, pluginContext: KlibSweetIrPluginContext) {
         // @Service
-        ServiceProviderGenerator(pluginContext).lower(moduleFragment)
+        ServiceProviderGenerator.generate(pluginContext, moduleFragment)
         ServiceProviderRegistryGenerator(pluginContext).lower(moduleFragment)
 
         // @Provides
-        ServiceProviderImplementationGenerator(pluginContext, mutableMapOf()/*we don't use them here*/).lower(moduleFragment)
+        ServiceProviderImplementationGenerator.generate(pluginContext, moduleFragment)
         ServiceProviderInitializerGenerator(pluginContext).lower(moduleFragment)
     }
 
     private fun generateJvm(moduleFragment: IrModuleFragment, pluginContext: JvmSweetIrPluginContext) {
         requireNotNull(resourcesPath) { "resourcesPath cannot be null" }
+        requireNotNull(moduleInfoPropertiesPath) { "moduleInfoPropertiesPath cannot be null" }
 
-        val generatedProviderImplementations = mutableMapOf<ClassId, MutableSet<ClassId>>()
+        ServiceProviderGenerator.generate(pluginContext, moduleFragment)
+        val generatedProviderImplementations = ServiceProviderImplementationGenerator.generate(pluginContext, moduleFragment)
+            .map { (serviceId, serviceImplIds) -> serviceId.toJvmString() to serviceImplIds.map { it.toJvmString() } }
+            .toMap()
 
-        ServiceProviderGenerator(pluginContext).lower(moduleFragment)
-        ServiceProviderImplementationGenerator(pluginContext, generatedProviderImplementations).lower(moduleFragment)
+        val collectedPackages = PackagesCollector.collectPackages(moduleFragment)
+        val collectedUsages = ServiceLoaderUsagesCollector.collectUsages(moduleFragment).map { it.toJvmString() }
 
-        generateJvmServices(resourcesPath, generatedProviderImplementations)
+        generateJvmServices(
+            resourcesPath = resourcesPath,
+            generatedProviderImplementations = generatedProviderImplementations
+        )
+        generateModuleInfoProperties(
+            moduleInfoPropertiesPath = moduleInfoPropertiesPath,
+            collectedPackages = collectedPackages,
+            collectedServiceLoaderUsages = collectedUsages,
+            generatedProviderImplementations = generatedProviderImplementations
+        )
     }
 
-    private fun generateJvmServices(resourcesPath: Path, generatedProviderImplementations: Map<ClassId, MutableSet<ClassId>>) {
-        fun ClassId.toJvmString(): String {
-            return if (packageFqName.isRoot) {
-                relativeClassName.asString().replace('.', '$')
-            } else {
-                buildString {
-                    append(packageFqName.asString())
-                    append(".")
-                    append(relativeClassName.asString().replace('.', '$'))
-                }
-            }
-        }
-
+    private fun generateJvmServices(resourcesPath: Path, generatedProviderImplementations: Map<String, List<String>>) {
         // recreate all resources
         resourcesPath.toFile().deleteRecursively()
-        generatedProviderImplementations.forEach { (serviceId, providerIds) ->
-            resourcesPath.resolve("META-INF/services/${serviceId.toJvmString()}").createParentDirectories().writeText(
-                providerIds.joinToString("\n", transform = ClassId::toJvmString)
+        generatedProviderImplementations.forEach { (serviceId, serviceImplIds) ->
+            resourcesPath.resolve("META-INF/services/${serviceId}").createParentDirectories().writeText(
+                serviceImplIds.joinToString("\n")
             )
+        }
+    }
+
+    // collect: exports, uses, provides
+    // # exports
+    // org.example.y
+    // org.example.y.core
+    // org.example.y.internal
+    // # uses
+    // org.example.y.Service - e.g. check for calls to kotlin and java `ServiceLoader` methods
+    // # provides
+    // org.example.y.Service=org.example.y.ServiceImpl
+    // org.example.y.Service=org.example.y.ServiceImpl2
+    // org.example.y.Service=org.example.y.ServiceImpl3
+    private fun generateModuleInfoProperties(
+        moduleInfoPropertiesPath: Path,
+        collectedPackages: List<String>,
+        collectedServiceLoaderUsages: List<String>,
+        generatedProviderImplementations: Map<String, List<String>>,
+    ) {
+        val content = buildString {
+            appendLine("# exports")
+            collectedPackages.forEach(::appendLine)
+            appendLine("# uses")
+            collectedServiceLoaderUsages.forEach(::appendLine)
+            appendLine("# provides")
+            generatedProviderImplementations.forEach { (serviceId, serviceImplIds) ->
+                serviceImplIds.forEach {
+                    append(serviceId).append('=').appendLine(it)
+                }
+            }
+            appendLine()
+        }
+
+        moduleInfoPropertiesPath.writeText(content)
+    }
+
+    private fun ClassId.toJvmString(): String {
+        return if (packageFqName.isRoot) {
+            relativeClassName.asString().replace('.', '$')
+        } else {
+            buildString {
+                append(packageFqName.asString())
+                append(".")
+                append(relativeClassName.asString().replace('.', '$'))
+            }
         }
     }
 }
 
-private class ServiceProviderGenerator(
+private class PackagesCollector private constructor(private val collectedPackages: MutableSet<String>) : FileLoweringPass {
+    override fun lower(irFile: IrFile) {
+        collectedPackages.add(irFile.packageFqName.asString())
+    }
+
+    companion object {
+        fun collectPackages(moduleFragment: IrModuleFragment): List<String> {
+            val collectedPackages = mutableSetOf<String>()
+            PackagesCollector(collectedPackages).lower(moduleFragment)
+            return collectedPackages.toList()
+        }
+    }
+}
+
+// TODO: we might not need `BodyLoweringPass` at all really
+private class ServiceLoaderUsagesCollector private constructor(private val collectedUsages: MutableSet<ClassId>) : BodyLoweringPass,
+    IrVisitorVoid() {
+
+    override fun visitCall(expression: IrCall) {
+        // TODO: depending on the callableId we need to get parameter differently
+        // TODO: will it detect java declarations???
+        if (expression.symbol.owner.callableId in SweetNames.AllServiceLoaderCalls) {
+            // TODO: get classId from parameter
+            // collectedUsages.add(expression.symbol.owner.classId)
+        }
+        super.visitCall(expression)
+    }
+
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        irBody.accept(this, null)
+    }
+
+    companion object {
+        fun collectUsages(moduleFragment: IrModuleFragment): Set<ClassId> {
+            val collectedUsages = mutableSetOf<ClassId>()
+            //ServiceLoaderUsagesCollector(collectedUsages).lower(moduleFragment)
+            return collectedUsages
+        }
+    }
+}
+
+private class ServiceProviderGenerator private constructor(
     private val pluginContext: SweetIrPluginContext,
 ) : ClassLoweringPass {
     override fun lower(irClass: IrClass) {
@@ -104,6 +193,15 @@ private class ServiceProviderGenerator(
 
             annotateWith(pluginContext.publishedApiClass)
             superTypes += pluginContext.serviceProviderClass.typeWith(irClass.defaultType)
+        }
+    }
+
+    companion object {
+        fun generate(
+            pluginContext: SweetIrPluginContext,
+            moduleFragment: IrModuleFragment,
+        ) {
+            ServiceProviderGenerator(pluginContext).lower(moduleFragment)
         }
     }
 }
@@ -155,7 +253,7 @@ private class ServiceProviderRegistryGenerator(
 // TODO: provider implementation as top-level (not nested) - needed for functions/properties initializers
 // TODO: support JvmProvides
 // TODO: JVM annotation flag handling!!!
-private class ServiceProviderImplementationGenerator(
+private class ServiceProviderImplementationGenerator private constructor(
     private val pluginContext: SweetIrPluginContext,
     private val generatedProviderImplementations: MutableMap<ClassId, MutableSet<ClassId>>,
 ) : ClassLoweringPass {
@@ -299,6 +397,17 @@ private class ServiceProviderImplementationGenerator(
                     })
                 }
             }
+        }
+    }
+
+    companion object {
+        fun generate(
+            pluginContext: SweetIrPluginContext,
+            moduleFragment: IrModuleFragment,
+        ): Map<ClassId, Set<ClassId>> {
+            val generatedProviderImplementations = mutableMapOf<ClassId, MutableSet<ClassId>>()
+            ServiceProviderImplementationGenerator(pluginContext, generatedProviderImplementations).lower(moduleFragment)
+            return generatedProviderImplementations
         }
     }
 }

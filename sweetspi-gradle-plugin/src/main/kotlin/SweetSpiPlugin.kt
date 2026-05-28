@@ -68,16 +68,24 @@ public abstract class SweetSpiPlugin @Inject constructor(
                 val resourcesPath = project.layout.buildDirectory.dir(
                     "generated/sweetspi/${kotlinCompilation.defaultSourceSet.name}/resources"
                 )
+                val moduleInfoPropertiesPath = project.layout.buildDirectory.file(
+                    "generated/sweetspi/${kotlinCompilation.defaultSourceSet.name}/module-info.properties"
+                )
                 // cross-link compilation and resource processing tasks via resources dir output
                 kotlinCompilation.compileTaskProvider.configure {
                     it.outputs.dir(resourcesPath).withPropertyName("sweetspi.resourcesPath")
+                    // TODO: why it creates a directory???
+//                    it.outputs.files(moduleInfoPropertiesPath).withPropertyName("sweetspi.moduleInfoPropertiesPath")
                 }
+                // TODO: check if it is fine, as we do generate resources after compilation, so maybe we should move this dependency elsewhere
+                //  now `resourcesPath` looks like both an input and an output
                 kotlinCompilation.defaultSourceSet.resources.srcDir(
                     kotlinCompilation.compileTaskProvider.map { resourcesPath.get() }
                 )
                 project.provider {
                     listOf(
-                        SubpluginOption("resourcesPath", resourcesPath.get().toString())
+                        SubpluginOption("resourcesPath", resourcesPath.get().toString()),
+                        SubpluginOption("moduleInfoPropertiesPath", moduleInfoPropertiesPath.get().toString())
                     )
                 }
             }

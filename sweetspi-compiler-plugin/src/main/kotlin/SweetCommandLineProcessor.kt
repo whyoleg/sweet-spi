@@ -4,24 +4,24 @@
 
 package dev.whyoleg.sweetspi.compiler
 
-import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
+import org.jetbrains.kotlin.backend.common.extensions.*
 import org.jetbrains.kotlin.compiler.plugin.*
 import org.jetbrains.kotlin.config.*
-import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
-import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar.ExtensionRegistrarContext
-import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
-import java.nio.file.Path
+import org.jetbrains.kotlin.fir.extensions.*
+import java.nio.file.*
 import kotlin.io.path.*
 
 private object SweetConfigurationKeys {
     val RESOURCES_PATH = CompilerConfigurationKey<Path>("Path to resources dir")
+    val MODULE_INFO_PROPERTIES_PATH = CompilerConfigurationKey<Path>("Path to module-info.properties file")
 }
 
 @OptIn(ExperimentalCompilerApi::class)
 class SweetCommandLineProcessor : CommandLineProcessor {
     override val pluginId: String = "dev.whyoleg.sweetspi"
     override val pluginOptions: Collection<CliOption> = listOf(
-        RESOURCES_PATH
+        RESOURCES_PATH,
+        MODULE_INFO_PROPERTIES_PATH
     )
 
     override fun processOption(
@@ -29,8 +29,9 @@ class SweetCommandLineProcessor : CommandLineProcessor {
         value: String,
         configuration: CompilerConfiguration,
     ): Unit = when (option.optionName) {
-        RESOURCES_PATH.optionName -> configuration.put(SweetConfigurationKeys.RESOURCES_PATH, Path(value))
-        else                      -> error("Unknown plugin option: ${option.optionName}")
+        RESOURCES_PATH.optionName              -> configuration.put(SweetConfigurationKeys.RESOURCES_PATH, Path(value))
+        MODULE_INFO_PROPERTIES_PATH.optionName -> configuration.put(SweetConfigurationKeys.MODULE_INFO_PROPERTIES_PATH, Path(value))
+        else                                   -> error("Unknown plugin option: ${option.optionName}")
     }
 
     companion object {
@@ -38,6 +39,13 @@ class SweetCommandLineProcessor : CommandLineProcessor {
             optionName = "resourcesPath",
             valueDescription = "<path>",
             description = SweetConfigurationKeys.RESOURCES_PATH.toString(),
+            required = false, // only for JVM
+            allowMultipleOccurrences = false,
+        )
+        private val MODULE_INFO_PROPERTIES_PATH = CliOption(
+            optionName = "moduleInfoPropertiesPath",
+            valueDescription = "<path>",
+            description = SweetConfigurationKeys.MODULE_INFO_PROPERTIES_PATH.toString(),
             required = false, // only for JVM
             allowMultipleOccurrences = false,
         )
@@ -50,13 +58,11 @@ class SweetCompilerPluginRegistrar : CompilerPluginRegistrar() {
     override val supportsK2: Boolean get() = true
 
     override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
-        FirExtensionRegistrarAdapter.registerExtension(SweetFirExtensionRegistrar())
+        val resourcesPath = configuration.get(SweetConfigurationKeys.RESOURCES_PATH)
+        val moduleInfoPropertiesPath = configuration.get(SweetConfigurationKeys.MODULE_INFO_PROPERTIES_PATH)
 
-        IrGenerationExtension.registerExtension(
-            SweetIrGenerationExtension(
-                resourcesPath = configuration.get(SweetConfigurationKeys.RESOURCES_PATH)
-            )
-        )
+        FirExtensionRegistrarAdapter.registerExtension(SweetFirExtensionRegistrar())
+        IrGenerationExtension.registerExtension(SweetIrGenerationExtension(resourcesPath, moduleInfoPropertiesPath))
     }
 }
 

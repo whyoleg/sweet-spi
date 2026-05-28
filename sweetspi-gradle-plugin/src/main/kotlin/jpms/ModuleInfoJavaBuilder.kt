@@ -4,6 +4,9 @@
 
 package dev.whyoleg.sweetspi.gradle.jpms
 
+import java.nio.file.*
+import kotlin.io.path.*
+
 internal fun moduleInfoJava(
     name: String,
     isOpened: Boolean = false,
@@ -145,5 +148,27 @@ public class ModuleInfoJavaBuilder internal constructor(
             append("    provides ").append(name).append(" with ").append(info.providedWith).appendLine(";")
         }
         append("}")
+    }
+}
+
+// parse: exports, uses, provides
+// # exports
+// org.example.y
+// org.example.y.core
+// org.example.y.internal
+// # uses
+// org.example.y.Service
+// # provides
+// org.example.y.Service=org.example.y.ServiceImpl
+internal fun ModuleInfoJavaBuilder.fillFromProperties(packagesPropertiesPath: Path) {
+    val (exports, uses, provides) = packagesPropertiesPath.readText().split(
+        "# exports", "# uses", "# provides",
+    )
+
+    exports.lines().forEach(::exports)
+    uses.lines().forEach(::uses)
+    provides.lines().forEach {
+        val (service, serviceImpl) = it.split('=')
+        provides(service, serviceImpl)
     }
 }
