@@ -47,11 +47,9 @@ class SweetIrGenerationExtension(
     private fun generateKlib(moduleFragment: IrModuleFragment, pluginContext: KlibSweetIrPluginContext) {
         // @Service
         ServiceProviderGenerator.generate(pluginContext, moduleFragment)
-        ServiceProviderRegistryGenerator(pluginContext).lower(moduleFragment)
 
         // @Provides
         ServiceProviderImplementationGenerator.generate(pluginContext, moduleFragment)
-        ServiceProviderInitializerGenerator(pluginContext).lower(moduleFragment)
     }
 
     private fun generateJvm(moduleFragment: IrModuleFragment, pluginContext: JvmSweetIrPluginContext) {
@@ -181,6 +179,7 @@ private class ServiceProviderGenerator private constructor(
 ) : ClassLoweringPass {
     override fun lower(irClass: IrClass) {
         if (!irClass.hasAnnotation(SweetNames.Service)) return
+
         pluginContext.irFactory.buildClass {
             origin = SweetOrigin
             kind = ClassKind.INTERFACE
@@ -194,23 +193,10 @@ private class ServiceProviderGenerator private constructor(
             annotateWith(pluginContext.publishedApiClass)
             superTypes += pluginContext.serviceProviderClass.typeWith(irClass.defaultType)
         }
-    }
 
-    companion object {
-        fun generate(
-            pluginContext: SweetIrPluginContext,
-            moduleFragment: IrModuleFragment,
-        ) {
-            ServiceProviderGenerator(pluginContext).lower(moduleFragment)
-        }
-    }
-}
+        if (pluginContext !is KlibSweetIrPluginContext) return
 
-private class ServiceProviderRegistryGenerator(
-    private val pluginContext: KlibSweetIrPluginContext,
-) : ClassLoweringPass {
-    override fun lower(irClass: IrClass) {
-        if (!irClass.hasAnnotation(SweetNames.Service)) return
+        // klib only addition - registry
 
         val registryClass = pluginContext.irFactory.buildClass {
             origin = SweetOrigin
@@ -245,10 +231,20 @@ private class ServiceProviderRegistryGenerator(
             )
         }
     }
+
+    companion object {
+        fun generate(
+            pluginContext: SweetIrPluginContext,
+            moduleFragment: IrModuleFragment,
+        ) {
+            ServiceProviderGenerator(pluginContext).lower(moduleFragment)
+        }
+    }
 }
 
 // TODO: all of those should be checked in FIR too
 // TODO: we need to also lower functions/properties
+// TODO: we should support functions/properties in object or companion objects, including nested objects
 // TODO: for top-level functions/properties we could support `private` declarations too
 // TODO: provider implementation as top-level (not nested) - needed for functions/properties initializers
 // TODO: support JvmProvides
@@ -257,6 +253,14 @@ private class ServiceProviderImplementationGenerator private constructor(
     private val pluginContext: SweetIrPluginContext,
     private val generatedProviderImplementations: MutableMap<ClassId, MutableSet<ClassId>>,
 ) : ClassLoweringPass {
+    private val currentFileInitializers = mutableListOf<IrProperty>()
+
+    override fun lower(irFile: IrFile) {
+        currentFileInitializers.clear()
+        super.lower(irFile)
+        irFile.declarations += currentFileInitializers
+    }
+
     override fun lower(irClass: IrClass) {
         if (!irClass.hasAnnotation(SweetNames.Provides)) return
 
@@ -286,7 +290,10 @@ private class ServiceProviderImplementationGenerator private constructor(
 
                 superTypes += providerType
 
-                generatedProviderImplementations.getOrPut(providerClassId, ::mutableSetOf).add(classIdOrFail)
+                // needed only to generate resources
+                if (pluginContext is JvmSweetIrPluginContext) {
+                    generatedProviderImplementations.getOrPut(providerClassId, ::mutableSetOf).add(classIdOrFail)
+                }
             }
 
             val delegate = providerImplClass.addField {
@@ -324,7 +331,7 @@ private class ServiceProviderImplementationGenerator private constructor(
                 }
             }
 
-            providerImplClass.addConstructor {
+            val providerImplConstructor = providerImplClass.addConstructor {
                 origin = SweetOrigin
                 isPrimary = true
             }.apply {
@@ -336,8 +343,8 @@ private class ServiceProviderImplementationGenerator private constructor(
                         value = irCall(pluginContext.lazyFunctionSymbol, delegate.type).apply {
                             typeArguments[0] = serviceType
                             arguments[0] = IrFunctionExpressionImpl(
-                                startOffset = irClass.startOffset,
-                                endOffset = irClass.endOffset,
+                                startOffset = startOffset,
+                                endOffset = endOffset,
                                 type = context.irBuiltIns.functionN(0).typeWith(serviceType),
                                 function = delegateInitializer,
                                 origin = IrStatementOrigin.LAMBDA
@@ -397,57 +404,14 @@ private class ServiceProviderImplementationGenerator private constructor(
                     })
                 }
             }
-        }
-    }
 
-    companion object {
-        fun generate(
-            pluginContext: SweetIrPluginContext,
-            moduleFragment: IrModuleFragment,
-        ): Map<ClassId, Set<ClassId>> {
-            val generatedProviderImplementations = mutableMapOf<ClassId, MutableSet<ClassId>>()
-            ServiceProviderImplementationGenerator(pluginContext, generatedProviderImplementations).lower(moduleFragment)
-            return generatedProviderImplementations
-        }
-    }
-}
+            if (pluginContext !is KlibSweetIrPluginContext) return@forEach
 
-private class ServiceProviderInitializerGenerator(
-    private val pluginContext: KlibSweetIrPluginContext,
-) : ClassLoweringPass {
-    private val currentFileInitializers = mutableListOf<IrProperty>()
-
-    override fun lower(irFile: IrFile) {
-        currentFileInitializers.clear()
-        super.lower(irFile)
-        irFile.declarations += currentFileInitializers
-    }
-
-    override fun lower(irClass: IrClass) {
-        if (!irClass.hasAnnotation(SweetNames.Provides)) return
-
-        val finder = pluginContext.finderForSource(irClass.file)
-
-        val serviceTypes = irClass.annotations
-            .filter { it.isAnnotationWithEqualFqName(SweetNames.Provides.asSingleFqName()) }
-            .map { (it.arguments[0] as IrClassReference).classType }
-
-        serviceTypes.forEach { serviceType ->
-            val serviceClassId = serviceType.classOrFail.owner.classIdOrFail
-            val serviceClassSymbol = finder.findClass(serviceClassId) ?: error("Service class ($serviceClassId) not found")
-            val providerClassSymbol =
-                serviceClassSymbol.owner.findDeclaration<IrClass> { it.name == SweetNames.ServiceProviderName }?.symbol
-                    ?: error("Provider class not found for service type: $serviceClassId")
+            // klib only addition - registration
 
             val registryClassSymbol =
                 serviceClassSymbol.owner.findDeclaration<IrClass> { it.name == SweetNames.ServiceProviderRegistryName }?.symbol
                     ?: error("Registry class not found for service type: $serviceClassId")
-
-            // find the provider implementation class (nested $ServiceProvider inside the @Provides class)
-            val providerImplClass =
-                irClass.findDeclaration<IrClass> { it.name == SweetNames.serviceProviderImplementationName(serviceClassId) }
-                    ?: error("Provider implementation class not found for service type: $serviceClassId")
-            val providerImplConstructor = providerImplClass.constructors.single { it.isPrimary }
 
             // generate: @EagerInitialization private val `$initializer$<serviceClassId>` = <Registry>.register(::<ProviderImpl>)
             // for native, just field is enough, but for js/wasm we need to have annotated property
@@ -481,6 +445,17 @@ private class ServiceProviderInitializerGenerator(
                     }
                 }
             }
+        }
+    }
+
+    companion object {
+        fun generate(
+            pluginContext: SweetIrPluginContext,
+            moduleFragment: IrModuleFragment,
+        ): Map<ClassId, Set<ClassId>> {
+            val generatedProviderImplementations = mutableMapOf<ClassId, MutableSet<ClassId>>()
+            ServiceProviderImplementationGenerator(pluginContext, generatedProviderImplementations).lower(moduleFragment)
+            return generatedProviderImplementations
         }
     }
 }
