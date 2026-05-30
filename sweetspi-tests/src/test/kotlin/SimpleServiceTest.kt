@@ -153,6 +153,20 @@ class SimpleServiceTest : TestProjectBasedTest() {
         """.trimIndent()
     )
 
+    @Test
+    fun testGenericService() = testSimpleServiceMultiplatform(
+        mainCode = """
+        @Service abstract class SimpleService<T>(val value: T)
+        @Provides(SimpleService::class) object SimpleServiceString : SimpleService<String>("100")
+        @Provides(SimpleService::class) object SimpleServiceInt : SimpleService<Int>(111)
+        """.trimIndent(),
+        testCode = """
+        val providers = ServiceLoader.load<SimpleService<*>>().toList()
+        assertEquals(2, providers.size)
+        assertEquals(listOf("100", "111"), providers.map { it.value.value.toString() }.sorted())
+        """.trimIndent()
+    )
+
     private fun testSingleSimpleService(
         @Language("kotlin") mainCode: String,
         @Language("kotlin") testCode: String, // has `provider` in scope
