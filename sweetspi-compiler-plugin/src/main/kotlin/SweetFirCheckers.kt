@@ -16,4 +16,5 @@ class SweetFirCheckers(session: FirSession) : FirAdditionalCheckersExtension(ses
     // check that there is no receiver, no context parameters
     // check that there is constructor/function with no arguments or with all default arguments
     // check that the class is not inner
+    // check functions are not suspend and other modifiers
 }

@@ -19,17 +19,18 @@ object SweetNames {
     // generated nested classes
     val ServiceProviderName = Name.identifier($$"$ServiceProvider")
     val ServiceProviderRegistryName = Name.identifier($$"$ServiceProviderRegistry")
-    fun serviceProviderImplementationName(serviceClassId: ClassId): Name = Name.identifier(
-        $$"$ServiceProvider$$${serviceClassId.sanitize()}"
-    )
 
-    // top-level property
+    // top-level provider
+    fun serviceProviderImplementationName(
+        serviceClassId: ClassId,
+        implName: Name,
+    ): Name = Name.identifier($$"$$implName$$${serviceClassId.sanitize()}$ServiceProvider")
+
+    // top-level initializer
     fun serviceProviderInitializerName(
         serviceClassId: ClassId,
-        serviceImplClassId: ClassId,
-    ): Name = Name.identifier(
-        $$"$ServiceProviderInitializer$$${serviceClassId.sanitize()}$$${serviceImplClassId.sanitize()}"
-    )
+        implName: Name,
+    ): Name = Name.identifier($$"$$implName$$${serviceClassId.sanitize()}$ServiceProvider$initializer")
 
     private val ServiceLoader = classId("ServiceLoader")
     private val ServiceLoaderLoad = CallableId(ServiceLoader, Name.identifier("load"))

@@ -105,6 +105,54 @@ class SimpleServiceTest : TestProjectBasedTest() {
         """.trimIndent()
     )
 
+    @Test
+    fun testFunction_simple() = testSingleSimpleService(
+        mainCode = $$"""
+        class SimpleServiceImpl(val string: String) : SimpleService {
+            override fun toString() = "SimpleServiceImpl($string)"
+        }
+        @Provides(SimpleService::class) fun provideSimpleService() = SimpleServiceImpl("default") 
+        """.trimIndent(),
+        testCode = """
+        assertEquals(SimpleServiceImpl::class, provider.type)
+        assertEquals(false, provider.isInitialized())
+        assertEquals("SimpleServiceImpl(default)", provider.value.toString())
+        assertEquals(true, provider.isInitialized())
+        """.trimIndent()
+    )
+
+    @Test
+    fun testFunction_defaultParameters() = testSingleSimpleService(
+        mainCode = $$"""
+        class SimpleServiceImpl(val string: String) : SimpleService {
+            override fun toString() = "SimpleServiceImpl($string)"
+        }
+        @Provides(SimpleService::class) fun provideSimpleService(string: String = "default") = SimpleServiceImpl(string) 
+        """.trimIndent(),
+        testCode = """
+        assertEquals(SimpleServiceImpl::class, provider.type)
+        assertEquals(false, provider.isInitialized())
+        assertEquals("SimpleServiceImpl(default)", provider.value.toString())
+        assertEquals(true, provider.isInitialized())
+        """.trimIndent()
+    )
+
+    @Test
+    fun testProperty() = testSingleSimpleService(
+        mainCode = $$"""
+        class SimpleServiceImpl(val string: String) : SimpleService {
+            override fun toString() = "SimpleServiceImpl($string)"
+        }
+        @Provides(SimpleService::class) val lazyService = SimpleServiceImpl("default") 
+        """.trimIndent(),
+        testCode = """
+        assertEquals(SimpleServiceImpl::class, provider.type)
+        assertEquals(false, provider.isInitialized())
+        assertEquals("SimpleServiceImpl(default)", provider.value.toString())
+        assertEquals(true, provider.isInitialized())
+        """.trimIndent()
+    )
+
     private fun testSingleSimpleService(
         @Language("kotlin") mainCode: String,
         @Language("kotlin") testCode: String, // has `provider` in scope

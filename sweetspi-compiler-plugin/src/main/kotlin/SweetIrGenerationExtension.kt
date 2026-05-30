@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.*
+import org.jetbrains.kotlin.ir.symbols.*
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.*
@@ -252,21 +253,36 @@ private class ServiceProviderGenerator private constructor(
 private class ServiceProviderImplementationGenerator private constructor(
     private val pluginContext: SweetIrPluginContext,
     private val generatedProviderImplementations: MutableMap<ClassId, MutableSet<ClassId>>,
-) : ClassLoweringPass {
-    private val currentFileInitializers = mutableListOf<IrProperty>()
+) : IrVisitorVoid() {
+    private val currentFileAdditionalDeclarations = mutableListOf<IrDeclaration>()
 
-    override fun lower(irFile: IrFile) {
-        currentFileInitializers.clear()
-        super.lower(irFile)
-        irFile.declarations += currentFileInitializers
+    override fun visitFile(declaration: IrFile) {
+        currentFileAdditionalDeclarations.clear()
+        declaration.acceptChildrenVoid(this)
+        declaration.declarations += currentFileAdditionalDeclarations
     }
 
-    override fun lower(irClass: IrClass) {
-        if (!irClass.hasAnnotation(SweetNames.Provides)) return
+    override fun visitClass(declaration: IrClass) {
+        declaration.acceptChildrenVoid(this)
 
-        val finder = pluginContext.finderForSource(irClass.file)
+        process(declaration)
+    }
 
-        val serviceTypes = irClass.annotations
+    override fun visitProperty(declaration: IrProperty) {
+        process(declaration)
+    }
+
+    override fun visitSimpleFunction(declaration: IrSimpleFunction) {
+        process(declaration)
+    }
+
+    private fun process(declaration: IrDeclarationWithName) {
+        // TODO: check declaration type somewhere - maybe in FIR checker?
+        if (!declaration.hasAnnotation(SweetNames.Provides)) return
+
+        val finder = pluginContext.finderForSource(declaration.file)
+
+        val serviceTypes = declaration.annotations
             .filter { it.isAnnotationWithEqualFqName(SweetNames.Provides.asSingleFqName()) }
             .map { (it.arguments[0] as IrClassReference).classType }
 
@@ -279,173 +295,235 @@ private class ServiceProviderImplementationGenerator private constructor(
             val providerClassId = providerClassSymbol.owner.classIdOrFail
             val providerType = providerClassSymbol.defaultType
 
-            val providerImplClass = pluginContext.irFactory.buildClass {
-                origin = SweetOrigin
-                name = SweetNames.serviceProviderImplementationName(serviceClassId)
-                kind = ClassKind.CLASS
-                visibility = DescriptorVisibilities.INTERNAL
-            }.apply {
-                irClass.addChild(this)
-                createThisReceiverParameter()
+            val providerImplClass = buildServiceProviderImpl(declaration, serviceClassId, serviceType, providerType)
 
-                superTypes += providerType
+            currentFileAdditionalDeclarations.add(providerImplClass)
 
-                // needed only to generate resources
-                if (pluginContext is JvmSweetIrPluginContext) {
-                    generatedProviderImplementations.getOrPut(providerClassId, ::mutableSetOf).add(classIdOrFail)
+            when (pluginContext) {
+                is JvmSweetIrPluginContext  -> {
+                    // TODO: what about JVM with different enum flags in `@Service`?
+                    // needed only to generate resources
+                    generatedProviderImplementations.getOrPut(providerClassId, ::mutableSetOf).add(providerImplClass.classIdOrFail)
+                }
+                is KlibSweetIrPluginContext -> {
+
+                    // klib only addition - registration
+
+                    val registryClassSymbol =
+                        serviceClassSymbol.owner.findDeclaration<IrClass> { it.name == SweetNames.ServiceProviderRegistryName }?.symbol
+                            ?: error("Registry class not found for service type: $serviceClassId")
+
+                    // generate: @EagerInitialization private val `$initializer$<serviceClassId>` = <Registry>.register(::<ProviderImpl>)
+                    // for native, just field is enough, but for js/wasm we need to have annotated property
+                    currentFileAdditionalDeclarations += buildServiceProviderImplInitializer(
+                        declaration = declaration,
+                        serviceClassId = serviceClassId,
+                        registryClassSymbol = registryClassSymbol,
+                        providerType = providerClassSymbol.defaultType,
+                        providerImplClass = providerImplClass,
+                    )
                 }
             }
+        }
+    }
 
-            val delegate = providerImplClass.addField {
-                origin = SweetOrigin
-                visibility = DescriptorVisibilities.PRIVATE
-                name = Name.identifier("delegate")
-                isFinal = true
-                type = pluginContext.lazyClass.typeWith(serviceType)
+    private fun buildServiceProviderImpl(
+        declaration: IrDeclarationWithName,
+        serviceClassId: ClassId,
+        serviceType: IrType,
+        providerType: IrType,
+    ): IrClass {
+        val providerImplClass = pluginContext.irFactory.buildClass {
+            origin = SweetOrigin
+            name = SweetNames.serviceProviderImplementationName(serviceClassId, declaration.name)
+            kind = ClassKind.CLASS
+            visibility = DescriptorVisibilities.INTERNAL
+        }.apply {
+            parent = declaration.file
+            createThisReceiverParameter()
+
+            superTypes += providerType
+        }
+
+        val delegate = providerImplClass.addField {
+            origin = SweetOrigin
+            visibility = DescriptorVisibilities.PRIVATE
+            name = Name.identifier("delegate")
+            isFinal = true
+            type = pluginContext.lazyClass.typeWith(serviceType)
+        }
+
+        val delegateLambda = pluginContext.irFactory.buildFun {
+            origin = SweetOrigin
+            name = Name.special("<anonymous>")
+            visibility = DescriptorVisibilities.LOCAL
+            returnType = serviceType
+        }.apply {
+            parent = providerImplClass
+            body = DeclarationIrBuilder(pluginContext, symbol).irBlockBody {
+                +irReturn(callServiceProvider(declaration))
             }
+        }
 
-            val delegateInitializer = pluginContext.irFactory.buildFun {
-                origin = SweetOrigin
-                name = Name.special("<anonymous>")
-                visibility = DescriptorVisibilities.LOCAL
-                returnType = serviceType
-            }.apply {
-                parent = providerImplClass
-                body = DeclarationIrBuilder(pluginContext, symbol).irBlockBody {
-                    val initializer = if (irClass.isObject) {
-                        irGetObject(irClass.symbol)
-                    } else {
-                        val visibleConstructors = irClass.constructors.filter {
-                            // take only visible constructors
-                            it.visibility == DescriptorVisibilities.PUBLIC || it.visibility == DescriptorVisibilities.INTERNAL
-                        }.toList()
-                        // take only constructors with no parameters (first) or all default ones (fallback)
-                        val constructor = visibleConstructors.firstOrNull {
-                            it.parameters.isEmpty()
-                        } ?: visibleConstructors.firstOrNull {
-                            it.parameters.all { it.defaultValue != null }
-                        } ?: error("No suitable constructor found for ${irClass.name}") // should be handled in FIR
-                        irCall(constructor)
+        providerImplClass.addConstructor {
+            origin = SweetOrigin
+            isPrimary = true
+        }.apply {
+            body = DeclarationIrBuilder(pluginContext, symbol).irBlockBody {
+                +irDelegatingConstructorCall(pluginContext.anyConstructor)
+                +irSetField(
+                    receiver = irGet(providerImplClass.thisReceiver!!),
+                    field = delegate,
+                    value = irCall(pluginContext.lazyFunctionSymbol, delegate.type).apply {
+                        typeArguments[0] = serviceType
+                        arguments[0] = IrFunctionExpressionImpl(
+                            startOffset = startOffset,
+                            endOffset = endOffset,
+                            type = context.irBuiltIns.functionN(0).typeWith(serviceType),
+                            function = delegateLambda,
+                            origin = IrStatementOrigin.LAMBDA
+                        )
                     }
-                    +irReturn(initializer)
+                )
+            }
+        }
+        // implement `ServiceProvider.type`
+        providerImplClass.addProperty {
+            origin = SweetOrigin
+            name = Name.identifier("type")
+        }.apply {
+            addGetter {
+                origin = SweetOrigin
+                returnType = pluginContext.irBuiltIns.kClassClass.typeWith(serviceType)
+            }.apply {
+                parameters = listOf(providerImplClass.thisReceiver!!.copyTo(this, type = providerImplClass.defaultType))
+                body = DeclarationIrBuilder(pluginContext, symbol, startOffset, endOffset).irBlockBody {
+                    // in case of function/properties we use return type
+                    val cls = when (declaration) {
+                        is IrClass          -> declaration
+                        is IrSimpleFunction -> declaration.returnType.classOrFail.owner
+                        is IrProperty       -> declaration.getter!!.returnType.classOrFail.owner
+                        else                -> error("Unexpected declaration type: ${declaration::class.simpleName}")
+                    }
+                    +irReturn(
+                        IrClassReferenceImpl(
+                            startOffset = startOffset,
+                            endOffset = endOffset,
+                            type = returnType,
+                            symbol = cls.symbol,
+                            classType = cls.defaultType
+                        )
+                    )
                 }
             }
-
-            val providerImplConstructor = providerImplClass.addConstructor {
+        }
+        // implement `Lazy.value`
+        providerImplClass.addProperty {
+            origin = SweetOrigin
+            name = Name.identifier("value")
+        }.apply {
+            addGetter {
                 origin = SweetOrigin
-                isPrimary = true
+                // generics... - WTF???
+                returnType = pluginContext.irBuiltIns.anyType
             }.apply {
-                body = DeclarationIrBuilder(pluginContext, symbol).irBlockBody {
-                    +irDelegatingConstructorCall(pluginContext.anyConstructor)
-                    +irSetField(
-                        receiver = irGet(providerImplClass.thisReceiver!!),
-                        field = delegate,
-                        value = irCall(pluginContext.lazyFunctionSymbol, delegate.type).apply {
-                            typeArguments[0] = serviceType
-                            arguments[0] = IrFunctionExpressionImpl(
+                parameters = listOf(providerImplClass.thisReceiver!!.copyTo(this, type = providerImplClass.defaultType))
+                body = DeclarationIrBuilder(pluginContext, symbol, startOffset, endOffset).irBlockBody {
+                    +irReturn(irCall(pluginContext.lazyValueGetter, serviceType).apply {
+                        arguments[0] = irGetField(irGet(parameters.single()), delegate)
+                    })
+                }
+            }
+        }
+        // implement `Lazy.isInitialized`
+        providerImplClass.addFunction {
+            origin = SweetOrigin
+            name = Name.identifier("isInitialized")
+            returnType = pluginContext.irBuiltIns.booleanType
+        }.apply {
+            parameters = listOf(providerImplClass.thisReceiver!!.copyTo(this, type = providerImplClass.defaultType))
+            body = DeclarationIrBuilder(pluginContext, symbol, startOffset, endOffset).irBlockBody {
+                +irReturn(irCall(pluginContext.lazyValueIsInitialized, returnType).apply {
+                    arguments[0] = irGetField(irGet(parameters.single()), delegate)
+                })
+            }
+        }
+
+        return providerImplClass
+    }
+
+    private fun buildServiceProviderImplInitializer(
+        declaration: IrDeclarationWithName,
+        serviceClassId: ClassId,
+        registryClassSymbol: IrClassSymbol,
+        providerType: IrType,
+        providerImplClass: IrClass,
+    ): IrProperty {
+        pluginContext as KlibSweetIrPluginContext
+
+        return pluginContext.irFactory.buildProperty {
+            origin = SweetOrigin
+            visibility = DescriptorVisibilities.PRIVATE
+            name = SweetNames.serviceProviderInitializerName(serviceClassId, declaration.name)
+        }.apply {
+            parent = declaration.file
+            annotateWith(pluginContext.eagerInitializationClass)
+            addBackingField {
+                isStatic = true // without it - it doesn't work on js/wasm
+                isFinal = true
+                type = pluginContext.irBuiltIns.unitType
+            }.apply {
+                initializer = DeclarationIrBuilder(pluginContext, symbol, startOffset, endOffset).run {
+                    irExprBody(
+                        irCall(pluginContext.serviceProviderRegistryRegister, context.irBuiltIns.unitType).apply {
+                            arguments[0] = irGetObject(registryClassSymbol)
+                            arguments[1] = IrFunctionReferenceImpl.fromSymbolOwner(
                                 startOffset = startOffset,
                                 endOffset = endOffset,
-                                type = context.irBuiltIns.functionN(0).typeWith(serviceType),
-                                function = delegateInitializer,
+                                type = context.irBuiltIns.functionN(0).typeWith(providerType),
+                                symbol = providerImplClass.constructors.single().symbol,
+                                typeArgumentsCount = 0,
+                                reflectionTarget = null,
                                 origin = IrStatementOrigin.LAMBDA
                             )
                         }
                     )
                 }
             }
-            providerImplClass.addProperty {
-                origin = SweetOrigin
-                name = Name.identifier("type")
-            }.apply {
-                addGetter {
-                    origin = SweetOrigin
-                    returnType = pluginContext.irBuiltIns.kClassClass.typeWith(serviceType)
-                }.apply {
-                    parameters = listOf(providerImplClass.thisReceiver!!.copyTo(this, type = providerImplClass.defaultType))
-                    body = DeclarationIrBuilder(pluginContext, symbol, startOffset, endOffset).irBlockBody {
-                        +irReturn(
-                            IrClassReferenceImpl(
-                                startOffset = startOffset,
-                                endOffset = endOffset,
-                                type = returnType,
-                                symbol = irClass.symbol,
-                                classType = irClass.defaultType
-                            )
-                        )
-                    }
-                }
-            }
-            providerImplClass.addProperty {
-                origin = SweetOrigin
-                name = Name.identifier("value")
-            }.apply {
-                addGetter {
-                    origin = SweetOrigin
-                    // generics... - WTF???
-                    returnType = pluginContext.irBuiltIns.anyType
-                }.apply {
-                    parameters = listOf(providerImplClass.thisReceiver!!.copyTo(this, type = providerImplClass.defaultType))
-                    body = DeclarationIrBuilder(pluginContext, symbol, startOffset, endOffset).irBlockBody {
-                        +irReturn(irCall(pluginContext.lazyValueGetter, serviceType).apply {
-                            arguments[0] = irGetField(irGet(parameters.single()), delegate)
-                        })
-                    }
-                }
-            }
-            providerImplClass.addFunction {
-                origin = SweetOrigin
-                name = Name.identifier("isInitialized")
-                returnType = pluginContext.irBuiltIns.booleanType
-            }.apply {
-                parameters = listOf(providerImplClass.thisReceiver!!.copyTo(this, type = providerImplClass.defaultType))
-                body = DeclarationIrBuilder(pluginContext, symbol, startOffset, endOffset).irBlockBody {
-                    +irReturn(irCall(pluginContext.lazyValueIsInitialized, returnType).apply {
-                        arguments[0] = irGetField(irGet(parameters.single()), delegate)
-                    })
-                }
-            }
-
-            if (pluginContext !is KlibSweetIrPluginContext) return@forEach
-
-            // klib only addition - registration
-
-            val registryClassSymbol =
-                serviceClassSymbol.owner.findDeclaration<IrClass> { it.name == SweetNames.ServiceProviderRegistryName }?.symbol
-                    ?: error("Registry class not found for service type: $serviceClassId")
-
-            // generate: @EagerInitialization private val `$initializer$<serviceClassId>` = <Registry>.register(::<ProviderImpl>)
-            // for native, just field is enough, but for js/wasm we need to have annotated property
-            currentFileInitializers += pluginContext.irFactory.buildProperty {
-                origin = SweetOrigin
-                visibility = DescriptorVisibilities.PRIVATE
-                name = SweetNames.serviceProviderInitializerName(serviceClassId, irClass.classIdOrFail)
-            }.apply {
-                parent = irClass.file
-                annotateWith(pluginContext.eagerInitializationClass)
-                addBackingField {
-                    isStatic = true // without it - it doesn't work on js/wasm
-                    isFinal = true
-                    type = pluginContext.irBuiltIns.unitType
-                }.apply {
-                    initializer = DeclarationIrBuilder(pluginContext, symbol, startOffset, endOffset).run {
-                        irExprBody(
-                            irCall(pluginContext.serviceProviderRegistryRegister, context.irBuiltIns.unitType).apply {
-                                arguments[0] = irGetObject(registryClassSymbol)
-                                arguments[1] = IrFunctionReferenceImpl.fromSymbolOwner(
-                                    startOffset = irClass.startOffset,
-                                    endOffset = irClass.endOffset,
-                                    type = context.irBuiltIns.functionN(0).typeWith(providerClassSymbol.defaultType),
-                                    symbol = providerImplConstructor.symbol,
-                                    typeArgumentsCount = 0,
-                                    reflectionTarget = null,
-                                    origin = IrStatementOrigin.LAMBDA
-                                )
-                            }
-                        )
-                    }
-                }
-            }
         }
+    }
+
+    private fun IrBuilderWithScope.callServiceProvider(declaration: IrDeclaration): IrExpression = when (declaration) {
+        is IrClass if declaration.isObject -> irGetObject(declaration.symbol)
+        is IrClass                         -> {
+            val visibleConstructors = declaration.constructors.filter {
+                // take only visible constructors
+                it.visibility == DescriptorVisibilities.PUBLIC || it.visibility == DescriptorVisibilities.INTERNAL
+            }.toList()
+            // take only constructors with no parameters (first) or all default ones (fallback)
+            val constructor = visibleConstructors.firstOrNull {
+                it.parameters.isEmpty()
+            } ?: visibleConstructors.firstOrNull {
+                it.parameters.all { it.defaultValue != null }
+            } ?: error("No suitable constructor found for ${declaration.name}") // should be handled in FIR
+
+            irCall(constructor)
+        }
+        is IrSimpleFunction                -> {
+            require(
+                declaration.parameters.isEmpty() ||
+                        declaration.parameters.all { it.defaultValue != null }
+            ) { "Function ${declaration.name} must have default values for all parameters" }
+
+            irCall(declaration)
+        }
+        is IrProperty                      -> {
+            requireNotNull(declaration.getter) { "Property ${declaration.name} must have a getter" }
+            require(declaration.getter!!.parameters.isEmpty()) { "Property ${declaration.name} must have no parameters" }
+
+            irCall(declaration.getter!!)
+        }
+        else                               -> error("Unexpected declaration type: ${declaration::class.simpleName}")
     }
 
     companion object {
@@ -454,7 +532,7 @@ private class ServiceProviderImplementationGenerator private constructor(
             moduleFragment: IrModuleFragment,
         ): Map<ClassId, Set<ClassId>> {
             val generatedProviderImplementations = mutableMapOf<ClassId, MutableSet<ClassId>>()
-            ServiceProviderImplementationGenerator(pluginContext, generatedProviderImplementations).lower(moduleFragment)
+            moduleFragment.acceptChildrenVoid(ServiceProviderImplementationGenerator(pluginContext, generatedProviderImplementations))
             return generatedProviderImplementations
         }
     }
