@@ -220,4 +220,51 @@ class CheckerTest : TestProjectBasedTest() {
         @Provides(S::class) fun provide(tag: String = "default"): S = Impl()
         """.trimIndent()
     )
+
+    @Test
+    fun providesFunctionInObjectCompiles() = assertCompiles(
+        code = """
+        @Service interface S
+        class Impl : S
+        object Holder { @Provides(S::class) fun provide(): S = Impl() }
+        """.trimIndent()
+    )
+
+    @Test
+    fun providesFunctionInClassRejected() = assertCompilationError(
+        code = """
+        @Service interface S
+        class Impl : S
+        class Holder { @Provides(S::class) fun provide(): S = Impl() }
+        """.trimIndent(),
+        expectedMessage = "@Provides function must be top-level or a member of an object"
+    )
+
+    @Test
+    fun providesPropertyInClassRejected() = assertCompilationError(
+        code = """
+        @Service interface S
+        class Impl : S
+        class Holder { @Provides(S::class) val provided: S = Impl() }
+        """.trimIndent(),
+        expectedMessage = "@Provides property must be top-level or a member of an object"
+    )
+
+    @Test
+    fun providesFunctionTypeParameter() = assertCompilationError(
+        code = """
+        @Service interface S
+        @Provides(S::class) fun <T : S> provide(): T = error("x")
+        """.trimIndent(),
+        expectedMessage = "must be a concrete type, not a type parameter"
+    )
+
+    @Test
+    fun providesDuplicateService() = assertCompilationError(
+        code = """
+        @Service interface S
+        @Provides(S::class) @Provides(S::class) object Impl : S
+        """.trimIndent(),
+        expectedMessage = "is provided more than once"
+    )
 }

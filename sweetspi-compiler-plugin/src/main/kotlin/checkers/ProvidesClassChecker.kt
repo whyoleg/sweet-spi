@@ -56,6 +56,9 @@ internal object ProvidesClassChecker : FirRegularClassChecker(MppCheckerKind.Com
             reporter.reportOn(declaration.source, SweetDiagnostics.PROVIDES_CLASS_NO_CONSTRUCTOR)
         }
 
+        // duplicate @Provides(X) check
+        declaration.reportDuplicateProvidesServices(session)
+
         // shared @Provides(X) checks: X is a @Service and the class is a subtype of X
         declaration.providesServiceTypes(session).forEach { (annotation, serviceType) ->
             val serviceSymbol = serviceType.serviceClassSymbol(session) ?: return@forEach
