@@ -12,6 +12,9 @@ object SweetNames {
     val Service = classId("Service")
     val Provides = classId("Provides")
 
+    // name of the `service` argument of `@Provides(service = ...)`
+    val ProvidesServiceArgument = Name.identifier("service")
+
     val ServiceProvider = classId("ServiceProvider")
     val ServiceProviderRegistry = classId("ServiceProviderRegistry")
     val ServiceProviderRegistryHolder = classId("ServiceProviderRegistryHolder")

@@ -19,6 +19,7 @@ mavenPublishing {
 kotlin {
     compilerOptions {
         optIn.add("org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI")
+        freeCompilerArgs.add("-Xcontext-parameters")
     }
 }
 

@@ -4,19 +4,16 @@
 
 package dev.whyoleg.sweetspi.compiler
 
+import dev.whyoleg.sweetspi.compiler.checkers.*
 import org.jetbrains.kotlin.fir.*
+import org.jetbrains.kotlin.fir.analysis.checkers.declaration.*
 import org.jetbrains.kotlin.fir.analysis.extensions.*
 
 // checkers that annotations are applied to correct functions/properties/classes
 class SweetFirCheckers(session: FirSession) : FirAdditionalCheckersExtension(session) {
-    // check that one class is not annotated with both @Provides and @Service
-    // check that @Provides argument is annotated with @Service
-    // check that @JvmProvides argument is NOT annotated with @Service
-    // check that class supser types or function/property return types has X from @Provides(X)
-    // check that there is no receiver, no context parameters
-    // check that there is constructor/function with no arguments or with all default arguments
-    // check that the class is not inner
-    // check functions are not suspend and other modifiers
-    // @Provides annotated declarations should be public/internal
-    // @Service annotated declarations should be public/internal
+    override val declarationCheckers: DeclarationCheckers = object : DeclarationCheckers() {
+        override val regularClassCheckers: Set<FirRegularClassChecker> = setOf(ServiceChecker, ProvidesClassChecker)
+        override val simpleFunctionCheckers: Set<FirSimpleFunctionChecker> = setOf(ProvidesFunctionChecker)
+        override val propertyCheckers: Set<FirPropertyChecker> = setOf(ProvidesPropertyChecker)
+    }
 }
