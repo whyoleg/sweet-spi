@@ -246,7 +246,6 @@ private class ServiceProviderGenerator private constructor(
 // TODO: all of those should be checked in FIR too
 // TODO: we need to also lower functions/properties
 // TODO: we should support functions/properties in object or companion objects, including nested objects
-// TODO: for top-level functions/properties we could support `private` declarations too
 // TODO: provider implementation as top-level (not nested) - needed for functions/properties initializers
 // TODO: support JvmProvides
 // TODO: JVM annotation flag handling!!!

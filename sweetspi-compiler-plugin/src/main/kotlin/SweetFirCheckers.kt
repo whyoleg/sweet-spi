@@ -17,4 +17,6 @@ class SweetFirCheckers(session: FirSession) : FirAdditionalCheckersExtension(ses
     // check that there is constructor/function with no arguments or with all default arguments
     // check that the class is not inner
     // check functions are not suspend and other modifiers
+    // @Provides annotated declarations should be public/internal
+    // @Service annotated declarations should be public/internal
 }
