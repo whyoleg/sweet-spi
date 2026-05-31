@@ -22,6 +22,9 @@ import org.jetbrains.kotlin.platform.jvm.*
 import java.nio.file.*
 import kotlin.io.path.*
 
+private val IrFunction.regularParameters: List<IrValueParameter>
+    get() = parameters.filter { it.kind == IrParameterKind.Regular }
+
 /**
  * for each `@Service X` -> could be done in FIR - public ABI (not really a public API)
  * - (common): we need to generate `X$ServiceProvider` - nested class
@@ -243,9 +246,7 @@ private class ServiceProviderGenerator private constructor(
     }
 }
 
-// TODO: all of those should be checked in FIR too
-// TODO: we need to also lower functions/properties
-// TODO: we should support functions/properties in object or companion objects, including nested objects
+// FIR checkers (SweetFirCheckers) now enforce placement, visibility, type, and parameter constraints.
 // TODO: provider implementation as top-level (not nested) - needed for functions/properties initializers
 // TODO: support JvmProvides
 // TODO: JVM annotation flag handling!!!
@@ -276,7 +277,6 @@ private class ServiceProviderImplementationGenerator private constructor(
     }
 
     private fun process(declaration: IrDeclarationWithName) {
-        // TODO: check declaration type somewhere - maybe in FIR checker?
         if (!declaration.hasAnnotation(SweetNames.Provides)) return
 
         val finder = pluginContext.finderForSource(declaration.file)
@@ -492,6 +492,23 @@ private class ServiceProviderImplementationGenerator private constructor(
         }
     }
 
+    /**
+     * Returns the owning object class if [declaration] is a member of an object/companion object/nested object,
+     * or null if it is top-level. Errors (internal assert) if it is a member of a regular class, which is
+     * guaranteed not to happen by the FIR PROVIDES_FUNCTION_NOT_TOP_LEVEL_OR_OBJECT /
+     * PROVIDES_PROPERTY_NOT_TOP_LEVEL_OR_OBJECT diagnostics.
+     */
+    private fun owningObjectOrNull(declaration: IrDeclaration): IrClass? {
+        val parent = declaration.parent
+        return when {
+            parent is IrClass && parent.isObject -> parent
+            parent is IrFile                     -> null
+            else                                 -> error(
+                "internal: top-level or object member is guaranteed by FIR PROVIDES_FUNCTION_NOT_TOP_LEVEL_OR_OBJECT / PROVIDES_PROPERTY_NOT_TOP_LEVEL_OR_OBJECT"
+            )
+        }
+    }
+
     private fun IrBuilderWithScope.callServiceProvider(declaration: IrDeclaration): IrExpression = when (declaration) {
         is IrClass if declaration.isObject -> irGetObject(declaration.symbol)
         is IrClass                         -> {
@@ -499,28 +516,40 @@ private class ServiceProviderImplementationGenerator private constructor(
                 // take only visible constructors
                 it.visibility == DescriptorVisibilities.PUBLIC || it.visibility == DescriptorVisibilities.INTERNAL
             }.toList()
-            // take only constructors with no parameters (first) or all default ones (fallback)
+            // take only constructors with no regular parameters (first) or all-default regular parameters (fallback)
             val constructor = visibleConstructors.firstOrNull {
-                it.parameters.isEmpty()
+                it.regularParameters.isEmpty()
             } ?: visibleConstructors.firstOrNull {
-                it.parameters.all { it.defaultValue != null }
-            } ?: error("No suitable constructor found for ${declaration.name}") // should be handled in FIR
+                it.regularParameters.all { it.defaultValue != null }
+            } ?: error("internal: suitable constructor guaranteed by FIR PROVIDES_CLASS_NO_CONSTRUCTOR")
 
             irCall(constructor)
         }
         is IrSimpleFunction                -> {
+            val regularParams = declaration.regularParameters
             require(
-                declaration.parameters.isEmpty() ||
-                        declaration.parameters.all { it.defaultValue != null }
-            ) { "Function ${declaration.name} must have default values for all parameters" }
+                regularParams.isEmpty() || regularParams.all { it.defaultValue != null }
+            ) { "internal: all-default parameters guaranteed by FIR PROVIDES_FUNCTION_PARAMETERS" }
 
-            irCall(declaration)
+            val owningObject = owningObjectOrNull(declaration)
+            irCall(declaration).also { call ->
+                if (owningObject != null) {
+                    val dispatchIdx = declaration.parameters.indexOfFirst { it.kind == IrParameterKind.DispatchReceiver }
+                    call.arguments[dispatchIdx] = irGetObject(owningObject.symbol)
+                }
+            }
         }
         is IrProperty                      -> {
-            requireNotNull(declaration.getter) { "Property ${declaration.name} must have a getter" }
-            require(declaration.getter!!.parameters.isEmpty()) { "Property ${declaration.name} must have no parameters" }
+            val getter = declaration.getter
+                ?: error("internal: val getter guaranteed by FIR PROVIDES_PROPERTY_MUTABLE")
 
-            irCall(declaration.getter!!)
+            val owningObject = owningObjectOrNull(declaration)
+            irCall(getter).also { call ->
+                if (owningObject != null) {
+                    val dispatchIdx = getter.parameters.indexOfFirst { it.kind == IrParameterKind.DispatchReceiver }
+                    call.arguments[dispatchIdx] = irGetObject(owningObject.symbol)
+                }
+            }
         }
         else                               -> error("Unexpected declaration type: ${declaration::class.simpleName}")
     }
