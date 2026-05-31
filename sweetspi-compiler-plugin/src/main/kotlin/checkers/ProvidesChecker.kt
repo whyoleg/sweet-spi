@@ -10,11 +10,13 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory0
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirDeclarationChecker
+import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
@@ -132,6 +134,35 @@ internal abstract class ProvidesChecker<D : FirMemberDeclaration> : FirDeclarati
 }
 
 // ---------------------------------------------------------------------------
+// Intermediate base for callable (function / property) providers
+// ---------------------------------------------------------------------------
+
+internal abstract class ProvidesCallableChecker<D : FirCallableDeclaration> : ProvidesChecker<D>() {
+
+    protected abstract val notTopLevelOrObjectDiagnostic: KtDiagnosticFactory0
+    protected abstract val receiverDiagnostic: KtDiagnosticFactory0
+
+    final override fun providedClassSymbol(declaration: D, session: FirSession): FirClassSymbol<*>? =
+        declaration.symbol.resolvedReturnType.serviceClassSymbol(session)
+
+    context(context: CheckerContext, reporter: DiagnosticReporter)
+    final override fun checkTarget(declaration: D) {
+        val container = declaration.symbol.getContainingClassSymbol()
+        val allowedContainer = container == null || (container is FirClassSymbol<*> && container.classKind == ClassKind.OBJECT)
+        if (!allowedContainer) {
+            reporter.reportOn(declaration.source, notTopLevelOrObjectDiagnostic)
+        }
+        if (declaration.symbol.receiverParameterSymbol != null || declaration.symbol.contextParameterSymbols.isNotEmpty()) {
+            reporter.reportOn(declaration.source, receiverDiagnostic)
+        }
+        checkCallable(declaration)
+    }
+
+    context(context: CheckerContext, reporter: DiagnosticReporter)
+    protected abstract fun checkCallable(declaration: D)
+}
+
+// ---------------------------------------------------------------------------
 // Concrete checkers
 // ---------------------------------------------------------------------------
 
@@ -181,59 +212,32 @@ internal object ProvidesClassChecker : ProvidesChecker<FirRegularClass>() {
     }
 }
 
-internal object ProvidesFunctionChecker : ProvidesChecker<FirNamedFunction>() {
-
-    context(context: CheckerContext, reporter: DiagnosticReporter)
-    override fun checkTarget(declaration: FirNamedFunction) {
-        val symbol = declaration.symbol
-
-        if (symbol.receiverParameterSymbol != null || symbol.contextParameterSymbols.isNotEmpty()) {
-            reporter.reportOn(declaration.source, SweetDiagnostics.PROVIDES_FUNCTION_RECEIVER)
-        }
-        if (symbol.resolvedStatus.isSuspend) {
-            reporter.reportOn(declaration.source, SweetDiagnostics.PROVIDES_FUNCTION_SUSPEND)
-        }
-        if (symbol.valueParameterSymbols.any { !it.hasDefaultValue }) {
-            reporter.reportOn(declaration.source, SweetDiagnostics.PROVIDES_FUNCTION_PARAMETERS)
-        }
-
-        val container = symbol.getContainingClassSymbol()
-        val allowedContainer = container == null || (container is FirClassSymbol<*> && container.classKind == ClassKind.OBJECT)
-        if (!allowedContainer) {
-            reporter.reportOn(declaration.source, SweetDiagnostics.PROVIDES_FUNCTION_NOT_TOP_LEVEL_OR_OBJECT)
-        }
-    }
-
-    override fun providedClassSymbol(declaration: FirNamedFunction, session: FirSession): FirClassSymbol<*>? =
-        declaration.symbol.resolvedReturnType.serviceClassSymbol(session)
+internal object ProvidesFunctionChecker : ProvidesCallableChecker<FirNamedFunction>() {
+    override val notTopLevelOrObjectDiagnostic get() = SweetDiagnostics.PROVIDES_FUNCTION_NOT_TOP_LEVEL_OR_OBJECT
+    override val receiverDiagnostic get() = SweetDiagnostics.PROVIDES_FUNCTION_RECEIVER
 
     override fun providedTypeIsTypeParameter(declaration: FirNamedFunction): Boolean =
         declaration.symbol.resolvedReturnType is ConeTypeParameterType
-}
-
-internal object ProvidesPropertyChecker : ProvidesChecker<FirProperty>() {
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
-    override fun checkTarget(declaration: FirProperty) {
-        val symbol = declaration.symbol
-
-        if (symbol.isVar) {
-            reporter.reportOn(declaration.source, SweetDiagnostics.PROVIDES_PROPERTY_MUTABLE)
+    override fun checkCallable(declaration: FirNamedFunction) {
+        if (declaration.symbol.resolvedStatus.isSuspend) {
+            reporter.reportOn(declaration.source, SweetDiagnostics.PROVIDES_FUNCTION_SUSPEND)
         }
-        if (symbol.receiverParameterSymbol != null || symbol.contextParameterSymbols.isNotEmpty()) {
-            reporter.reportOn(declaration.source, SweetDiagnostics.PROVIDES_PROPERTY_RECEIVER)
-        }
-
-        val container = symbol.getContainingClassSymbol()
-        val allowedContainer = container == null || (container is FirClassSymbol<*> && container.classKind == ClassKind.OBJECT)
-        if (!allowedContainer) {
-            reporter.reportOn(declaration.source, SweetDiagnostics.PROVIDES_PROPERTY_NOT_TOP_LEVEL_OR_OBJECT)
+        if (declaration.symbol.valueParameterSymbols.any { !it.hasDefaultValue }) {
+            reporter.reportOn(declaration.source, SweetDiagnostics.PROVIDES_FUNCTION_PARAMETERS)
         }
     }
+}
 
-    override fun providedClassSymbol(declaration: FirProperty, session: FirSession): FirClassSymbol<*>? =
-        declaration.symbol.resolvedReturnType.serviceClassSymbol(session)
+internal object ProvidesPropertyChecker : ProvidesCallableChecker<FirProperty>() {
+    override val notTopLevelOrObjectDiagnostic get() = SweetDiagnostics.PROVIDES_PROPERTY_NOT_TOP_LEVEL_OR_OBJECT
+    override val receiverDiagnostic get() = SweetDiagnostics.PROVIDES_PROPERTY_RECEIVER
 
-    // providedTypeIsTypeParameter defaults to false — properties cannot have type parameters,
-    // so the type-parameter check present in the old ProvidesPropertyChecker was dead code.
+    context(context: CheckerContext, reporter: DiagnosticReporter)
+    override fun checkCallable(declaration: FirProperty) {
+        if (declaration.symbol.isVar) {
+            reporter.reportOn(declaration.source, SweetDiagnostics.PROVIDES_PROPERTY_MUTABLE)
+        }
+    }
 }
