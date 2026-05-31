@@ -85,8 +85,7 @@ private fun FirMemberDeclaration.reportDuplicateServices(session: FirSession) {
 // Abstract base
 // ---------------------------------------------------------------------------
 
-internal abstract class ProvidesChecker<D : FirMemberDeclaration>(
-) : FirDeclarationChecker<D>(MppCheckerKind.Common) {
+internal abstract class ProvidesChecker<D : FirMemberDeclaration> : FirDeclarationChecker<D>(MppCheckerKind.Common) {
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
     final override fun check(declaration: D) {
