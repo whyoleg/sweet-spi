@@ -5,6 +5,7 @@
 package dev.whyoleg.sweetspi.compiler.checkers
 
 import dev.whyoleg.sweetspi.compiler.SweetNames
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -31,7 +32,7 @@ internal object ProvidesClassChecker : FirRegularClassChecker(MppCheckerKind.Com
         }
 
         // visibility
-        if (!declaration.status.visibility.isAllowedForSweet()) {
+        if (!declaration.symbol.resolvedStatus.visibility.isAllowedForSweet()) {
             reporter.reportOn(declaration.source, SweetDiagnostics.PROVIDES_WRONG_VISIBILITY)
         }
 
@@ -39,7 +40,7 @@ internal object ProvidesClassChecker : FirRegularClassChecker(MppCheckerKind.Com
         if (declaration.isLocal) {
             reporter.reportOn(declaration.source, SweetDiagnostics.PROVIDES_CLASS_LOCAL)
         }
-        if (declaration.status.isInner) {
+        if (declaration.symbol.resolvedStatus.isInner) {
             reporter.reportOn(declaration.source, SweetDiagnostics.PROVIDES_CLASS_INNER)
         }
 
@@ -66,7 +67,7 @@ internal object ProvidesClassChecker : FirRegularClassChecker(MppCheckerKind.Com
         }
     }
 
-    private fun hasSuitableConstructor(declaration: FirRegularClass, session: org.jetbrains.kotlin.fir.FirSession): Boolean {
+    private fun hasSuitableConstructor(declaration: FirRegularClass, session: FirSession): Boolean {
         val constructors = declaration.symbol.constructors(session).filter { ctor: FirConstructorSymbol ->
             val vis = ctor.resolvedStatus.visibility
             vis == Visibilities.Public || vis == Visibilities.Internal

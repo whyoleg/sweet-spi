@@ -28,7 +28,7 @@ internal object ServiceChecker : FirRegularClassChecker(MppCheckerKind.Common) {
             reporter.reportOn(declaration.source, SweetDiagnostics.SERVICE_WRONG_TARGET)
         }
 
-        if (!declaration.status.visibility.isAllowedForSweet()) {
+        if (!declaration.symbol.resolvedStatus.visibility.isAllowedForSweet()) {
             reporter.reportOn(declaration.source, SweetDiagnostics.SERVICE_WRONG_VISIBILITY)
         }
     }
