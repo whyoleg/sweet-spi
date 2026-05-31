@@ -7,8 +7,11 @@ package dev.whyoleg.sweetspi.compiler.checkers
 import dev.whyoleg.sweetspi.compiler.SweetNames
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
+import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.declarations.getAnnotationsByClassId
 import org.jetbrains.kotlin.fir.declarations.getKClassArgument
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
@@ -36,6 +39,18 @@ internal fun ConeKotlinType.serviceClassSymbol(session: FirSession): FirClassSym
 /** True if X (the service) is itself annotated with @Service. */
 internal fun FirClassSymbol<*>.isAnnotatedAsService(session: FirSession): Boolean =
     hasAnnotation(SweetNames.Service, session)
+
+/** Reports [SweetDiagnostics.PROVIDES_DUPLICATE_SERVICE] for any service type that appears more than once on this declaration. */
+context(context: CheckerContext, reporter: DiagnosticReporter)
+internal fun FirAnnotationContainer.reportDuplicateProvidesServices(session: FirSession) {
+    val seen = HashSet<ClassId>()
+    providesServiceTypes(session).forEach { (annotation, serviceType) ->
+        val id = serviceType.serviceClassSymbol(session)?.classId ?: return@forEach
+        if (!seen.add(id)) {
+            reporter.reportOn(annotation.source, SweetDiagnostics.PROVIDES_DUPLICATE_SERVICE, id.asFqNameString())
+        }
+    }
+}
 
 /** True if `this` provider class is a subtype of the service identified by [serviceClassId] (compared by classifier, ignoring type arguments). */
 internal fun FirClassSymbol<*>.isSweetSubclassOf(serviceClassId: ClassId, session: FirSession): Boolean {

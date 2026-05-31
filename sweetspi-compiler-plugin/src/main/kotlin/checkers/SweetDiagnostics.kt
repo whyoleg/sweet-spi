@@ -38,6 +38,12 @@ internal object SweetDiagnostics : KtDiagnosticsContainer() {
     val PROVIDES_PROPERTY_MUTABLE by error0<KtElement>()
     val PROVIDES_PROPERTY_RECEIVER by error0<KtElement>()
 
+    // @Provides on function/property (placement + type checks)
+    val PROVIDES_FUNCTION_NOT_TOP_LEVEL_OR_OBJECT by error0<KtElement>()
+    val PROVIDES_PROPERTY_NOT_TOP_LEVEL_OR_OBJECT by error0<KtElement>()
+    val PROVIDES_TYPE_PARAMETER by error0<KtElement>()
+    val PROVIDES_DUPLICATE_SERVICE by error1<KtElement, String>()
+
     override fun getRendererFactory(): BaseDiagnosticRendererFactory = SweetDiagnosticRenderers
 }
 
@@ -62,5 +68,10 @@ private object SweetDiagnosticRenderers : BaseDiagnosticRendererFactory() {
 
         map.put(SweetDiagnostics.PROVIDES_PROPERTY_MUTABLE, "@Provides property must be a val")
         map.put(SweetDiagnostics.PROVIDES_PROPERTY_RECEIVER, "@Provides property must not have an extension receiver or context parameters")
+
+        map.put(SweetDiagnostics.PROVIDES_FUNCTION_NOT_TOP_LEVEL_OR_OBJECT, "@Provides function must be top-level or a member of an object")
+        map.put(SweetDiagnostics.PROVIDES_PROPERTY_NOT_TOP_LEVEL_OR_OBJECT, "@Provides property must be top-level or a member of an object")
+        map.put(SweetDiagnostics.PROVIDES_TYPE_PARAMETER, "@Provides provided type must be a concrete type, not a type parameter")
+        map.put(SweetDiagnostics.PROVIDES_DUPLICATE_SERVICE, "service ''{0}'' is provided more than once by this declaration", CommonRenderers.STRING)
     }
 }
