@@ -143,13 +143,63 @@ class SimpleServiceTest : TestProjectBasedTest() {
         class SimpleServiceImpl(val string: String) : SimpleService {
             override fun toString() = "SimpleServiceImpl($string)"
         }
-        @Provides(SimpleService::class) val lazyService = SimpleServiceImpl("default") 
+        @Provides(SimpleService::class) val lazyService = SimpleServiceImpl("default")
         """.trimIndent(),
         testCode = """
         assertEquals(SimpleServiceImpl::class, provider.type)
         assertEquals(false, provider.isInitialized())
         assertEquals("SimpleServiceImpl(default)", provider.value.toString())
         assertEquals(true, provider.isInitialized())
+        """.trimIndent()
+    )
+
+    @Test
+    fun testFunction_inObject() = testSingleSimpleService(
+        mainCode = $$"""
+        class SimpleServiceImpl(val string: String) : SimpleService {
+            override fun toString() = "SimpleServiceImpl($string)"
+        }
+        object Provider {
+            @Provides(SimpleService::class) fun provide() = SimpleServiceImpl("default")
+        }
+        """.trimIndent(),
+        testCode = """
+        assertEquals(SimpleServiceImpl::class, provider.type)
+        assertEquals("SimpleServiceImpl(default)", provider.value.toString())
+        """.trimIndent()
+    )
+
+    @Test
+    fun testProperty_inObject() = testSingleSimpleService(
+        mainCode = $$"""
+        class SimpleServiceImpl(val string: String) : SimpleService {
+            override fun toString() = "SimpleServiceImpl($string)"
+        }
+        object Provider {
+            @Provides(SimpleService::class) val service = SimpleServiceImpl("default")
+        }
+        """.trimIndent(),
+        testCode = """
+        assertEquals(SimpleServiceImpl::class, provider.type)
+        assertEquals("SimpleServiceImpl(default)", provider.value.toString())
+        """.trimIndent()
+    )
+
+    @Test
+    fun testFunction_inCompanionObject() = testSingleSimpleService(
+        mainCode = $$"""
+        class SimpleServiceImpl(val string: String) : SimpleService {
+            override fun toString() = "SimpleServiceImpl($string)"
+        }
+        class Host {
+            companion object {
+                @Provides(SimpleService::class) fun provide() = SimpleServiceImpl("default")
+            }
+        }
+        """.trimIndent(),
+        testCode = """
+        assertEquals(SimpleServiceImpl::class, provider.type)
+        assertEquals("SimpleServiceImpl(default)", provider.value.toString())
         """.trimIndent()
     )
 
