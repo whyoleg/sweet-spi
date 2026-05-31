@@ -59,4 +59,70 @@ class CheckerTest : TestProjectBasedTest() {
         code = "@Service private interface SecretService",
         expectedMessage = "@Service declaration must be public or internal"
     )
+
+    @Test
+    fun providesAndServiceTogether() = assertCompilationError(
+        code = """
+        @Service interface S
+        @Service @Provides(S::class) interface Both : S
+        """.trimIndent(),
+        expectedMessage = "both @Service and @Provides"
+    )
+
+    @Test
+    fun providesServiceNotAnnotated() = assertCompilationError(
+        code = """
+        interface Plain
+        @Provides(Plain::class) object Impl : Plain
+        """.trimIndent(),
+        expectedMessage = "is not annotated with @Service"
+    )
+
+    @Test
+    fun providesTypeMismatch() = assertCompilationError(
+        code = """
+        @Service interface S
+        class Unrelated
+        @Provides(S::class) object Impl : Unrelated()
+        """.trimIndent(),
+        expectedMessage = "not a subtype of service"
+    )
+
+    @Test
+    fun providesClassWrongVisibility() = assertCompilationError(
+        code = """
+        @Service interface S
+        @Provides(S::class) private object Impl : S
+        """.trimIndent(),
+        expectedMessage = "@Provides declaration must be public or internal"
+    )
+
+    @Test
+    fun providesAbstractClass() = assertCompilationError(
+        code = """
+        @Service interface S
+        @Provides(S::class) abstract class Impl : S
+        """.trimIndent(),
+        expectedMessage = "must be an object or an instantiable class"
+    )
+
+    @Test
+    fun providesInnerClass() = assertCompilationError(
+        code = """
+        @Service interface S
+        class Outer {
+            @Provides(S::class) inner class Impl : S
+        }
+        """.trimIndent(),
+        expectedMessage = "@Provides class must not be inner"
+    )
+
+    @Test
+    fun providesClassWithRequiredConstructorParam() = assertCompilationError(
+        code = """
+        @Service interface S
+        @Provides(S::class) class Impl(val required: String) : S
+        """.trimIndent(),
+        expectedMessage = "must have a public or internal constructor"
+    )
 }
