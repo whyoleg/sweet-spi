@@ -125,4 +125,44 @@ class CheckerTest : TestProjectBasedTest() {
         """.trimIndent(),
         expectedMessage = "must have a public or internal constructor"
     )
+
+    @Test
+    fun providesSuspendFunction() = assertCompilationError(
+        code = """
+        @Service interface S
+        class Impl : S
+        @Provides(S::class) suspend fun provide(): S = Impl()
+        """.trimIndent(),
+        expectedMessage = "@Provides function must not be suspend"
+    )
+
+    @Test
+    fun providesFunctionWithReceiver() = assertCompilationError(
+        code = """
+        @Service interface S
+        class Impl : S
+        @Provides(S::class) fun String.provide(): S = Impl()
+        """.trimIndent(),
+        expectedMessage = "must not have an extension receiver or context parameters"
+    )
+
+    @Test
+    fun providesFunctionWithRequiredParam() = assertCompilationError(
+        code = """
+        @Service interface S
+        class Impl : S
+        @Provides(S::class) fun provide(required: String): S = Impl()
+        """.trimIndent(),
+        expectedMessage = "@Provides function parameters must all have default values"
+    )
+
+    @Test
+    fun providesFunctionReturnsNonService() = assertCompilationError(
+        code = """
+        @Service interface S
+        class Unrelated
+        @Provides(S::class) fun provide(): Unrelated = Unrelated()
+        """.trimIndent(),
+        expectedMessage = "not a subtype of service"
+    )
 }
