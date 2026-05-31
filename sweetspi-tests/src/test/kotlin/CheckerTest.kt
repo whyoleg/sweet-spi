@@ -195,4 +195,29 @@ class CheckerTest : TestProjectBasedTest() {
         """.trimIndent(),
         expectedMessage = "not a subtype of service"
     )
+
+    @Test
+    fun validObjectProviderCompiles() = assertCompiles(
+        code = """
+        @Service interface S
+        @Provides(S::class) object Impl : S
+        """.trimIndent()
+    )
+
+    @Test
+    fun validGenericServiceCompiles() = assertCompiles(
+        code = """
+        @Service abstract class S<T>(val value: T)
+        @Provides(S::class) object SString : S<String>("x")
+        """.trimIndent()
+    )
+
+    @Test
+    fun validFunctionWithAllDefaultParamsCompiles() = assertCompiles(
+        code = """
+        @Service interface S
+        class Impl : S
+        @Provides(S::class) fun provide(tag: String = "default"): S = Impl()
+        """.trimIndent()
+    )
 }
