@@ -165,4 +165,34 @@ class CheckerTest : TestProjectBasedTest() {
         """.trimIndent(),
         expectedMessage = "not a subtype of service"
     )
+
+    @Test
+    fun providesMutableProperty() = assertCompilationError(
+        code = """
+        @Service interface S
+        class Impl : S
+        @Provides(S::class) var provided: S = Impl()
+        """.trimIndent(),
+        expectedMessage = "@Provides property must be a val"
+    )
+
+    @Test
+    fun providesPropertyWithReceiver() = assertCompilationError(
+        code = """
+        @Service interface S
+        class Impl : S
+        @Provides(S::class) val String.provided: S get() = Impl()
+        """.trimIndent(),
+        expectedMessage = "must not have an extension receiver or context parameters"
+    )
+
+    @Test
+    fun providesPropertyOfNonService() = assertCompilationError(
+        code = """
+        @Service interface S
+        class Unrelated
+        @Provides(S::class) val provided: Unrelated = Unrelated()
+        """.trimIndent(),
+        expectedMessage = "not a subtype of service"
+    )
 }
