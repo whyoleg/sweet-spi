@@ -136,6 +136,12 @@ public expect open class ServiceLoader {
      * Returned sequence can be iterated only once.
      */
     public fun <T : Any> load(type: KClass<T>): Sequence<ServiceProvider<T>>
+
+    // TODO: this might be some other API really - `@Service` should declare, single or multiple implementations are expected or not
+    // TODO: add `loadOne(): T | NoServiceProvider | MultipleServiceProviders` that could be optimized for cases, when single implementation is expected
+    //  it will be like optional expect/actual
+    //  build should enforce, that only single implementation is expected
+    //  no need to have `ServiceProvider`
 }
 
 // same as in JDK, same as in a lot of DIs, where Provider<T> = () -> T
