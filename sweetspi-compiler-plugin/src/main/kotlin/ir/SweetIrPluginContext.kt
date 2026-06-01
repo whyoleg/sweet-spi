@@ -2,8 +2,9 @@
  * Copyright (c) 2026 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package dev.whyoleg.sweetspi.compiler
+package dev.whyoleg.sweetspi.compiler.ir
 
+import dev.whyoleg.sweetspi.compiler.*
 import org.jetbrains.kotlin.backend.common.extensions.*
 import org.jetbrains.kotlin.builtins.*
 import org.jetbrains.kotlin.ir.declarations.*

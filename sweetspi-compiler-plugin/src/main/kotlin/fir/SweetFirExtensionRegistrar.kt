@@ -2,15 +2,21 @@
  * Copyright (c) 2026 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package dev.whyoleg.sweetspi.compiler
+package dev.whyoleg.sweetspi.compiler.fir
 
-import dev.whyoleg.sweetspi.compiler.checkers.*
 import org.jetbrains.kotlin.fir.*
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.*
 import org.jetbrains.kotlin.fir.analysis.extensions.*
+import org.jetbrains.kotlin.fir.extensions.*
+
+class SweetFirExtensionRegistrar : FirExtensionRegistrar() {
+    override fun ExtensionRegistrarContext.configurePlugin() {
+        +::SweetFirCheckers
+    }
+}
 
 // checkers that annotations are applied to correct functions/properties/classes
-class SweetFirCheckers(session: FirSession) : FirAdditionalCheckersExtension(session) {
+private class SweetFirCheckers(session: FirSession) : FirAdditionalCheckersExtension(session) {
     override val declarationCheckers: DeclarationCheckers = object : DeclarationCheckers() {
         override val regularClassCheckers: Set<FirRegularClassChecker> = setOf(ServiceChecker, ProvidesClassChecker)
         override val simpleFunctionCheckers: Set<FirSimpleFunctionChecker> = setOf(ProvidesFunctionChecker)

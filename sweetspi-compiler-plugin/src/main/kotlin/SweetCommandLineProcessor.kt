@@ -4,6 +4,8 @@
 
 package dev.whyoleg.sweetspi.compiler
 
+import dev.whyoleg.sweetspi.compiler.fir.*
+import dev.whyoleg.sweetspi.compiler.ir.*
 import org.jetbrains.kotlin.backend.common.extensions.*
 import org.jetbrains.kotlin.compiler.plugin.*
 import org.jetbrains.kotlin.config.*
@@ -63,11 +65,5 @@ class SweetCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
         FirExtensionRegistrarAdapter.registerExtension(SweetFirExtensionRegistrar())
         IrGenerationExtension.registerExtension(SweetIrGenerationExtension(resourcesPath, moduleInfoPropertiesPath))
-    }
-}
-
-class SweetFirExtensionRegistrar : FirExtensionRegistrar() {
-    override fun ExtensionRegistrarContext.configurePlugin() {
-        +::SweetFirCheckers
     }
 }

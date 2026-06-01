@@ -2,19 +2,16 @@
  * Copyright (c) 2026 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package dev.whyoleg.sweetspi.compiler.checkers
+package dev.whyoleg.sweetspi.compiler.fir
 
-import dev.whyoleg.sweetspi.compiler.SweetNames
-import org.jetbrains.kotlin.descriptors.ClassKind
-import org.jetbrains.kotlin.descriptors.Modality
-import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
-import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
-import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirRegularClassChecker
-import org.jetbrains.kotlin.fir.declarations.FirRegularClass
-import org.jetbrains.kotlin.fir.declarations.hasAnnotation
-import org.jetbrains.kotlin.fir.declarations.utils.modality
+import dev.whyoleg.sweetspi.compiler.*
+import org.jetbrains.kotlin.descriptors.*
+import org.jetbrains.kotlin.diagnostics.*
+import org.jetbrains.kotlin.fir.analysis.checkers.*
+import org.jetbrains.kotlin.fir.analysis.checkers.context.*
+import org.jetbrains.kotlin.fir.analysis.checkers.declaration.*
+import org.jetbrains.kotlin.fir.declarations.*
+import org.jetbrains.kotlin.fir.declarations.utils.*
 
 internal object ServiceChecker : FirRegularClassChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -22,6 +19,8 @@ internal object ServiceChecker : FirRegularClassChecker(MppCheckerKind.Common) {
         val session = context.session
         if (!declaration.hasAnnotation(SweetNames.Service, session)) return
 
+        // TODO: java also support `open class`
+        // TODO: we could also support final classes, enums and sealed classes - only for objects it doesn't make sense
         val isInterfaceOrAbstractClass = declaration.classKind == ClassKind.INTERFACE ||
                 (declaration.classKind == ClassKind.CLASS && declaration.modality == Modality.ABSTRACT)
         if (!isInterfaceOrAbstractClass) {
