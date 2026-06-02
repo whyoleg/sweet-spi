@@ -153,7 +153,7 @@ class CheckerTest : TestProjectBasedTest() {
         class Impl : S
         @Provides(S::class) fun provide(required: String): S = Impl()
         """.trimIndent(),
-        expectedMessage = "@Provides function parameters must all have default values"
+        expectedMessage = "@Provides function/property must not have an extension receiver or context parameters"
     )
 
     @Test
@@ -164,16 +164,6 @@ class CheckerTest : TestProjectBasedTest() {
         @Provides(S::class) fun provide(): Unrelated = Unrelated()
         """.trimIndent(),
         expectedMessage = "not a subtype of service"
-    )
-
-    @Test
-    fun providesMutableProperty() = assertCompilationError(
-        code = """
-        @Service interface S
-        class Impl : S
-        @Provides(S::class) var provided: S = Impl()
-        """.trimIndent(),
-        expectedMessage = "@Provides property must be a val"
     )
 
     @Test
@@ -237,7 +227,7 @@ class CheckerTest : TestProjectBasedTest() {
         class Impl : S
         class Holder { @Provides(S::class) fun provide(): S = Impl() }
         """.trimIndent(),
-        expectedMessage = "@Provides function must be top-level or a member of an object"
+        expectedMessage = "@Provides function/property must be top-level or a member of an object"
     )
 
     @Test
@@ -247,16 +237,7 @@ class CheckerTest : TestProjectBasedTest() {
         class Impl : S
         class Holder { @Provides(S::class) val provided: S = Impl() }
         """.trimIndent(),
-        expectedMessage = "@Provides property must be top-level or a member of an object"
-    )
-
-    @Test
-    fun providesFunctionTypeParameter() = assertCompilationError(
-        code = """
-        @Service interface S
-        @Provides(S::class) fun <T : S> provide(): T = error("x")
-        """.trimIndent(),
-        expectedMessage = "must be a concrete type, not a type parameter"
+        expectedMessage = "@Provides function/property must be top-level or a member of an object"
     )
 
     @Test

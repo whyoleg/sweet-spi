@@ -13,7 +13,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.*
 import org.jetbrains.kotlin.fir.declarations.*
 import org.jetbrains.kotlin.fir.declarations.utils.*
 
-internal object ServiceChecker : FirRegularClassChecker(MppCheckerKind.Common) {
+object ServiceChecker : FirRegularClassChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirRegularClass) {
         val session = context.session
@@ -27,7 +27,7 @@ internal object ServiceChecker : FirRegularClassChecker(MppCheckerKind.Common) {
             reporter.reportOn(declaration.source, SweetDiagnostics.SERVICE_WRONG_TARGET)
         }
 
-        if (!declaration.symbol.resolvedStatus.visibility.isAllowedForSweet()) {
+        if (!declaration.symbol.resolvedStatus.visibility.isPublicOrInternal()) {
             reporter.reportOn(declaration.source, SweetDiagnostics.SERVICE_WRONG_VISIBILITY)
         }
     }

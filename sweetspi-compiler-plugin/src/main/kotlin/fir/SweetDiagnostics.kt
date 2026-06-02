@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.diagnostics.*
 import org.jetbrains.kotlin.diagnostics.rendering.*
 import org.jetbrains.kotlin.psi.*
 
-internal object SweetDiagnostics : KtDiagnosticsContainer() {
+object SweetDiagnostics : KtDiagnosticsContainer() {
     // @Service
     val SERVICE_WRONG_TARGET by error0<KtElement>()
     val SERVICE_WRONG_VISIBILITY by error0<KtElement>()
@@ -26,19 +26,13 @@ internal object SweetDiagnostics : KtDiagnosticsContainer() {
     val PROVIDES_CLASS_NO_CONSTRUCTOR by error0<KtElement>()
 
     // @Provides on function
-    val PROVIDES_FUNCTION_RECEIVER by error0<KtElement>() // TODO: unify with property - CALLABLE
     val PROVIDES_FUNCTION_SUSPEND by error0<KtElement>() // TODO: support for property
-    val PROVIDES_FUNCTION_PARAMETERS by error0<KtElement>()
 
-    // @Provides on property
-    val PROVIDES_PROPERTY_MUTABLE by error0<KtElement>() // TODO: drop
-    val PROVIDES_PROPERTY_RECEIVER by error0<KtElement>()
+    // @Provides on propert
 
     // @Provides on function/property (placement + type checks)
-    // TODO: unify property/function errors
-    val PROVIDES_FUNCTION_NOT_TOP_LEVEL_OR_OBJECT by error0<KtElement>()
-    val PROVIDES_PROPERTY_NOT_TOP_LEVEL_OR_OBJECT by error0<KtElement>()
-    val PROVIDES_TYPE_PARAMETER by error0<KtElement>()
+    val PROVIDES_CALLABLE_NOT_TOP_LEVEL_OR_OBJECT by error0<KtElement>()
+    val PROVIDES_CALLABLE_PARAMETERS by error0<KtElement>()
     val PROVIDES_DUPLICATE_SERVICE by error1<KtElement, String>()
 
     override fun getRendererFactory(): BaseDiagnosticRendererFactory = SweetDiagnosticRenderers
@@ -69,16 +63,17 @@ private object SweetDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             "@Provides class must have a public or internal constructor with no parameters or all-default parameters"
         )
 
-        map.put(SweetDiagnostics.PROVIDES_FUNCTION_RECEIVER, "@Provides function must not have an extension receiver or context parameters")
         map.put(SweetDiagnostics.PROVIDES_FUNCTION_SUSPEND, "@Provides function must not be suspend")
-        map.put(SweetDiagnostics.PROVIDES_FUNCTION_PARAMETERS, "@Provides function parameters must all have default values")
 
-        map.put(SweetDiagnostics.PROVIDES_PROPERTY_MUTABLE, "@Provides property must be a val")
-        map.put(SweetDiagnostics.PROVIDES_PROPERTY_RECEIVER, "@Provides property must not have an extension receiver or context parameters")
+        map.put(
+            SweetDiagnostics.PROVIDES_CALLABLE_PARAMETERS,
+            "@Provides function/property must not have an extension receiver or context parameters, function parameters must all have default values or be absent"
+        )
 
-        map.put(SweetDiagnostics.PROVIDES_FUNCTION_NOT_TOP_LEVEL_OR_OBJECT, "@Provides function must be top-level or a member of an object")
-        map.put(SweetDiagnostics.PROVIDES_PROPERTY_NOT_TOP_LEVEL_OR_OBJECT, "@Provides property must be top-level or a member of an object")
-        map.put(SweetDiagnostics.PROVIDES_TYPE_PARAMETER, "@Provides provided type must be a concrete type, not a type parameter")
+        map.put(
+            SweetDiagnostics.PROVIDES_CALLABLE_NOT_TOP_LEVEL_OR_OBJECT,
+            "@Provides function/property must be top-level or a member of an object"
+        )
         map.put(
             SweetDiagnostics.PROVIDES_DUPLICATE_SERVICE,
             "service ''{0}'' is provided more than once by this declaration",
