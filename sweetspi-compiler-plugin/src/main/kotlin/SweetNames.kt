@@ -15,6 +15,9 @@ object SweetNames {
     // name of the `service` argument of `@Provides(service = ...)`
     val ProvidesServiceArgument = Name.identifier("service")
 
+    // name of the `javaServiceLoaderCompatibilityMode` argument of `@Service(...)`
+    val ServiceCompatModeArgument = Name.identifier("javaServiceLoaderCompatibilityMode")
+
     val ServiceProvider = classId("ServiceProvider")
     val ServiceProviderRegistry = classId("ServiceProviderRegistry")
     val ServiceProviderRegistryHolder = classId("ServiceProviderRegistryHolder")
