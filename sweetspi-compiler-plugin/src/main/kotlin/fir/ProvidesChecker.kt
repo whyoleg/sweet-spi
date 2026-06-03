@@ -21,6 +21,17 @@ import org.jetbrains.kotlin.name.*
 fun Visibility.isPublicOrInternal(): Boolean =
     this == Visibilities.Public || this == Visibilities.Internal
 
+// Reads @Service(javaServiceLoaderCompatibilityMode) off the service symbol; absent → NO_COMPATIBILITY.
+// Works cross-module (deserialized annotation arguments are handled by extractEnumValueArgumentInfo).
+fun FirClassSymbol<*>.jvmCompatMode(session: FirSession): JvmCompatMode {
+    val entry = getAnnotationByClassId(SweetNames.Service, session)
+        ?.findArgumentByName(SweetNames.ServiceCompatModeArgument)
+        ?.extractEnumValueArgumentInfo()
+        ?.enumEntryName
+        ?.asString()
+    return JvmCompatMode.fromEntryName(entry)
+}
+
 sealed class ProvidesChecker<D : FirMemberDeclaration> : FirDeclarationChecker<D>(MppCheckerKind.Common) {
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -56,6 +67,17 @@ sealed class ProvidesChecker<D : FirMemberDeclaration> : FirDeclarationChecker<D
                     reporter.reportOn(
                         declaration.source,
                         SweetDiagnostics.PROVIDES_TYPE_MISMATCH,
+                        serviceSymbol.classId.asFqNameString(),
+                    )
+                }
+            }
+
+            if (serviceSymbol.jvmCompatMode(session) == JvmCompatMode.FULL_COMPATIBILITY) {
+                val isInstantiableClass = declaration is FirRegularClass && declaration.classKind == ClassKind.CLASS
+                if (!isInstantiableClass) {
+                    reporter.reportOn(
+                        annotation.source,
+                        SweetDiagnostics.PROVIDES_FULL_COMPATIBILITY_REQUIRES_CLASS,
                         serviceSymbol.classId.asFqNameString(),
                     )
                 }

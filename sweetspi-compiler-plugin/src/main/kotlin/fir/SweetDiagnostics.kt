@@ -34,6 +34,7 @@ object SweetDiagnostics : KtDiagnosticsContainer() {
     val PROVIDES_CALLABLE_NOT_TOP_LEVEL_OR_OBJECT by error0<KtElement>()
     val PROVIDES_CALLABLE_PARAMETERS by error0<KtElement>()
     val PROVIDES_DUPLICATE_SERVICE by error1<KtElement, String>()
+    val PROVIDES_FULL_COMPATIBILITY_REQUIRES_CLASS by error1<KtElement, String>()
 
     override fun getRendererFactory(): BaseDiagnosticRendererFactory = SweetDiagnosticRenderers
 }
@@ -77,6 +78,11 @@ private object SweetDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put(
             SweetDiagnostics.PROVIDES_DUPLICATE_SERVICE,
             "service ''{0}'' is provided more than once by this declaration",
+            CommonRenderers.STRING
+        )
+        map.put(
+            SweetDiagnostics.PROVIDES_FULL_COMPATIBILITY_REQUIRES_CLASS,
+            "providing for FULL_COMPATIBILITY service ''{0}'' requires an instantiable class; objects, functions and properties are not supported in FULL_COMPATIBILITY mode",
             CommonRenderers.STRING
         )
     }
