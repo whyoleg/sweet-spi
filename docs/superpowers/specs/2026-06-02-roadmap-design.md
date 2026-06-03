@@ -81,7 +81,7 @@ are out of scope.
 | ID | Goal | Depends on | Kind | Status |
 |----|------|-----------|------|--------|
 | M0 | Multi-module + KMP-checker regression net | — | tests | done |
-| M1 | Cross-module fix (G8) + FIR/IR refactor | M0 | refactor + fix | G8 done; refactor pending |
+| M1 | Cross-module fix (G8) + FIR/IR refactor | M0 | refactor + fix | done |
 | M1b | Test consolidation & MPP hierarchy alignment | M1 | tests | done |
 | M1c | KMP scenario test DSL (unify checker/topology/forms) | M1b | tests | in progress |
 | M2 | Honor `Service` compat enum in IR/resources + `ServiceLoader` usage collection + decide JVM-test DSL | M1 | feature | planned |
