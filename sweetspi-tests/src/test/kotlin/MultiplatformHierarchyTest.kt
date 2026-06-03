@@ -122,35 +122,34 @@ class MultiplatformHierarchyTest : TestProjectBasedTest() {
     // (depending only on :provider). Validates cross-module resolution of the FIR-generated nested types
     // when the provider lives in an intermediate source set.
     //
-    // Asserts native only. js/wasm are compiled (compile coverage) but NOT run here — see
-    // multiModuleProviderInNonJvm_jsWasm below for why their runtime path is a known limitation.
+    // Asserts native + wasmJs (cross-module works there). js is compiled but NOT run — see
+    // multiModuleProviderInNonJvm_js below for the js-only known limitation.
     @Test
     fun multiModuleProviderInNonJvm() = context(project) {
         setupMultiModuleNonJvm()
 
         gradle(
-            ":consumer:macosArm64Test", ":consumer:compileTestKotlinJs",
-            ":consumer:compileTestKotlinWasmJs", ":consumer:compileTestKotlinLinuxX64"
+            ":consumer:macosArm64Test", ":consumer:wasmJsNodeTest",
+            ":consumer:compileTestKotlinJs", ":consumer:compileTestKotlinLinuxX64"
         ) {
             assertTrue(task(":consumer:macosArm64Test")!!.outcome.isPositive)
+            assertTrue(task(":consumer:wasmJsNodeTest")!!.outcome.isPositive)
         }
     }
 
-    // KNOWN-LIMITATION (M6): cross-module SPI does not work on js/wasm. A @Provides in a separately-linked
-    // module registers via an @EagerInitialization property, but on js/wasm that module's top-level
-    // initializers run only when the module is actually loaded — and the consumer reaches the provider
-    // module only reflectively (associated-object registry), so it is never loaded and the registry stays
-    // empty (load() returns 0). Works on jvm (META-INF) and native (whole-program link). Resolving this is
-    // the @JsExport / wasm multi-module work tracked in the roadmap M6 spike. This test encodes the
-    // requirement; un-ignore it when M6 lands.
+    // KNOWN-LIMITATION (M6, js only — wasmJs works): cross-module SPI does not work on js. A @Provides in a
+    // separately-linked module registers via an @EagerInitialization property, but on js that module's
+    // top-level initializers run only when the module is actually loaded — and the consumer reaches the
+    // provider module only reflectively (associated-object registry), so it is never loaded and the
+    // registry stays empty (load() returns 0). Works on jvm (META-INF), native (whole-program link), and
+    // wasmJs. Fixing js is tracked in the roadmap M6 spike; un-ignore when it lands.
     @Ignore
     @Test
-    fun multiModuleProviderInNonJvm_jsWasm() = context(project) {
+    fun multiModuleProviderInNonJvm_js() = context(project) {
         setupMultiModuleNonJvm()
 
-        gradle(":consumer:jsNodeTest", ":consumer:wasmJsNodeTest") {
+        gradle(":consumer:jsNodeTest") {
             assertTrue(task(":consumer:jsNodeTest")!!.outcome.isPositive)
-            assertTrue(task(":consumer:wasmJsNodeTest")!!.outcome.isPositive)
         }
     }
 
