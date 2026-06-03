@@ -82,8 +82,9 @@ are out of scope.
 |----|------|-----------|------|--------|
 | M0 | Multi-module + KMP-checker regression net | — | tests | done |
 | M1 | Cross-module fix (G8) + FIR/IR refactor | M0 | refactor + fix | G8 done; refactor pending |
-| M1b | Test consolidation & MPP hierarchy alignment | M1 | tests | in progress |
-| M2 | Honor `Service` compat enum in IR/resources + `ServiceLoader` usage collection | M1 | feature | planned |
+| M1b | Test consolidation & MPP hierarchy alignment | M1 | tests | done |
+| M1c | KMP scenario test DSL (unify checker/topology/forms) | M1b | tests | in progress |
+| M2 | Honor `Service` compat enum in IR/resources + `ServiceLoader` usage collection + decide JVM-test DSL | M1 | feature | planned |
 | M3 | `@JvmProvides` checker + IR | M1 | feature | planned |
 | M4 | R8-friendly `ServiceLoader.load` IR rewrite (JVM) | M1, M2 | feature | planned |
 | M5 | Generate `module-info.java` in gradle plugin | M1, M2 | feature | planned |
@@ -193,6 +194,36 @@ self-evident before building more features on top.
 
 **Exit criteria:** all execution tests run on the canonical matrix via the shared helper; no manual
 `dependsOn`; the topology split is in place; full `:sweetspi-tests:test` green (js tracker `@Ignore`d).
+
+### M1c — KMP scenario test DSL
+
+**Why:** the three KMP test kinds (checkers, service/provider placement across modules+source-sets,
+provider declaration forms) are the same shape — *put code somewhere, build the project, run across the
+target axis, assert per target*. Encode that once so coverage is a matrix, not hand-rolled per test.
+
+**Decisions (2026-06-03):** build a **KMP-only** DSL now; a separate JVM DSL (and whether to share
+scenario definitions across jvm/kmp) is deferred to **M2** (JVM specifics). Drop the `js` cross-module
+tracker entirely — js returns later by adding the `js` target to the canonical matrix once fixed. Keep
+code **inline** in tests (no extracted fixtures); delete `Fixtures.kt`.
+
+**Scope**
+- `api/KmpScenario.kt`: a project-spec DSL (modules + dependencies + per-source-set files via logical
+  layers `commonMain`/`commonTest`/`nonJvmMain`/`nonJvmTest`/`jvmAndNativeMain`/`jvmAndNativeTest`) on
+  the canonical matrix, plus two runners:
+  - `kmpCheckerScenario(code) { failsWith(msg) | compiles() }` — runs `compileKotlin<Target>` for **every**
+    canonical target (jvm, macosArm64, linuxX64, wasmJs, wasmWasi), asserting the diagnostic / success
+    **per target call** (`--continue` so all targets are checked in one build).
+  - `kmpExecutionScenario { module(...){ ... } }` — builds the (multi-)module project, then runs the
+    consumer's test tasks for the targets that include the test's source set (compile-only for linuxX64),
+    asserting runtime discovery per target.
+- Rewrite the KMP tests onto it: `CheckerKmpTest` (all checker cases, per target), `TopologyTest`
+  (merges source-set placement + cross-module into single scenarios mixing modules **and** source sets),
+  `ProviderFormsTest` KMP cases. Existing plain-JVM tests (`CheckerTest`, jvm execution sm…) stay as-is
+  until M2.
+
+**Exit criteria:** KMP checker + execution + forms run through the DSL; `TopologyTest` exercises
+module-and-source-set relations in single cases; `Fixtures.kt` and the js tracker are gone; full
+`:sweetspi-tests:test` green.
 
 **Risk note:** if the reified-inline type argument cannot be recovered at IR call sites, record the
 limitation here and adjust M4's approach accordingly before starting M4.

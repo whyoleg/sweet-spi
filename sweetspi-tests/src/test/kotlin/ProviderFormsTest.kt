@@ -235,43 +235,15 @@ class ProviderFormsTest : TestProjectBasedTest() {
         """.trimMargin()
     )
 
+    // KMP: the provider declaration (mainCode) goes in commonMain, the load+asserts (testCode) in
+    // commonTest; kmpExecutionScenario runs it on every canonical target.
     private fun testSimpleServiceMultiplatform(
         @Language("kotlin") mainCode: String,
         @Language("kotlin") testCode: String,
     ) = context(project) {
-        bootstrapKotlinMultiplatformExecutionProject()
-
-        file("src/commonMain/kotlin/SimpleService.kt").kotlin(
-            """
-            |import dev.whyoleg.sweetspi.*
-            |
-            |${mainCode.alignMargin()}
-            |
-            |""".trimMargin()
-        )
-        file("src/commonTest/kotlin/SimpleServiceTest.kt").kotlin(
-            """
-            |import dev.whyoleg.sweetspi.*
-            |import kotlin.test.*
-            |
-            |class SimpleServiceTest {
-            |    @Test
-            |    fun test() {
-            |        ${testCode.alignMargin("|        ")}
-            |    }
-            |}
-            |
-            """.trimMargin()
-        )
-
-        gradle(
-            ":jvmTest", ":macosArm64Test", ":wasmJsNodeTest", ":wasmWasiNodeTest",
-            ":compileTestKotlinLinuxX64"
-        ) {
-            assertTrue(task(":jvmTest")!!.outcome.isPositive)
-            assertTrue(task(":macosArm64Test")!!.outcome.isPositive)
-            assertTrue(task(":wasmJsNodeTest")!!.outcome.isPositive)
-            assertTrue(task(":wasmWasiNodeTest")!!.outcome.isPositive)
+        kmpExecutionScenario {
+            commonMain(mainCode)
+            commonTest(testCode)
         }
     }
 }
