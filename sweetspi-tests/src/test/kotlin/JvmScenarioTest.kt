@@ -33,4 +33,20 @@ class JvmScenarioTest : TestProjectBasedTest() {
             failsWith("@Service is only applicable to interfaces or abstract classes")
         }
     }
+
+    @Test
+    fun servicesFileForNoCompatibility() = context(project) {
+        jvmExecutionScenario {
+            main(
+                """
+                @Service interface S
+                @Provides(S::class) object Impl : S
+                """.trimIndent()
+            )
+            test("assertEquals(1, ServiceLoader.load<S>().toList().size)")
+        }
+        // current behavior: keyed by the $ServiceProvider nested class, one generated wrapper entry
+        assertServicesFile(serviceId = "sweettests.S\$\$ServiceProvider", entryCount = 1)
+        assertNoServicesFile(serviceId = "sweettests.S")
+    }
 }
