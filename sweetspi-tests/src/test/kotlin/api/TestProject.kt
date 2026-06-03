@@ -46,55 +46,25 @@ fun gradle(
 context(project: TestProject)
 fun bootstrapKotlinJvmProject() {
     bootstrapGradleProject()
-
-    file("build.gradle.kts").kts(
-        """
-        import org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation
-        
-        plugins {
-            alias(libs.plugins.kotlin.jvm)
-            alias(libs.plugins.sweetspi)
-        }
-        @OptIn(ExperimentalAbiValidation::class)
-        kotlin {
-            abiValidation { enabled = true }
-        }
-        dependencies { 
-            implementation(kotlin("test"))
-        }
-
-        """.trimIndent()
-    )
+    jvmBuildFile()
 }
 
 context(project: TestProject)
 fun bootstrapKotlinMultiplatformProject() {
     bootstrapGradleProject()
+    multiplatformBuildFile()
+}
 
-    file("build.gradle.kts").kts(
-        """
-        import org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation
-
-        plugins {
-            alias(libs.plugins.kotlin.multiplatform)
-            alias(libs.plugins.sweetspi)
-        }
-        @OptIn(ExperimentalAbiValidation::class)
-        kotlin {
-            abiValidation { enabled = true }
-        }
-        kotlin { 
-            sourceSets.commonTest.dependencies { 
-                implementation(kotlin("test"))
-            }
-        }
-
-        """.trimIndent()
-    )
+// Multi-module project: writes shared settings (with `include(...)`), properties and version catalog.
+// The caller writes each module's build file (jvmBuildFile/multiplatformBuildFile) + sources via file(...).
+// No root build.gradle.kts is written here.
+context(project: TestProject)
+fun bootstrapMultiModuleProject(modules: List<String>) {
+    bootstrapGradleProject(includes = modules)
 }
 
 context(project: TestProject)
-private fun bootstrapGradleProject() {
+private fun bootstrapGradleProject(includes: List<String> = emptyList()) {
     file("gradle.properties").writeText(
         """
         org.gradle.parallel=true
@@ -128,24 +98,32 @@ private fun bootstrapGradleProject() {
         |    )
         |}
         """.trimMargin().alignMargin("|        ") // to be aligned in `settings.gradle.kts`
+
+    val includeStatements = includes.joinToString("\n") { "include(\"$it\")" }
+
     file("settings.gradle.kts").kts(
-        """
-        |pluginManagement {
-        |    repositories {
-        |        $devArtifactsRepositories
-        |        mavenCentral()
-        |        gradlePluginPortal()
-        |    }
-        |}
-        |
-        |dependencyResolutionManagement {
-        |    repositories {
-        |        $devArtifactsRepositories
-        |        mavenCentral()
-        |    }
-        |}
-        |
-        """.trimMargin()
+        buildString {
+            append(
+                """
+                |pluginManagement {
+                |    repositories {
+                |        $devArtifactsRepositories
+                |        mavenCentral()
+                |        gradlePluginPortal()
+                |    }
+                |}
+                |
+                |dependencyResolutionManagement {
+                |    repositories {
+                |        $devArtifactsRepositories
+                |        mavenCentral()
+                |    }
+                |}
+                |
+                """.trimMargin()
+            )
+            if (includeStatements.isNotEmpty()) append(includeStatements).append("\n")
+        }
     )
 }
 
