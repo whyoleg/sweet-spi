@@ -6,8 +6,9 @@
 
 **Architecture:** Extract small build-file writers (`jvmBuildFile` / `multiplatformBuildFile`) that
 emit a module's `build.gradle.kts` — plugins, ABI validation (always on), targets, and an always-added
-`kotlin("test")` — and accept a trailing lambda returning extra build-script content (e.g. project
-dependencies). Reuse them in the existing single-module bootstrap functions. Each test inlines its own
+`kotlin("test")` — and return the written file's `Path` so the caller can chain `.appendText(...)` to
+add extra content (e.g. project dependencies). Reuse them in the existing single-module bootstrap
+functions. Each test inlines its own
 subject code so it reads self-contained. Add multi-module support to the harness (`settings.gradle.kts`
 includes). Then add JVM and Kotlin-Multiplatform functional tests where a `@Service` lives in one
 module, its `@Provides` impl in a second, and the consuming `ServiceLoader.load` in a third — with the
@@ -24,8 +25,8 @@ variant of the checker tests proving the FIR diagnostics fire on common-code com
   `multiplatformBuildFile`. No sealed `KotlinSetup` type.
 - **The writers create a module's `build.gradle.kts`** (hence the build-oriented names), **always enable
   ABI validation**, and **always add `kotlin("test")`**. They take **no `dependencies` argument**;
-  instead a **trailing lambda returns extra build-script content** (project dependencies, etc.), which
-  is appended to the generated file.
+  instead they **return the written file's `Path`**, so the caller can chain **`.appendText(...)`** to
+  add project dependencies, etc.
 - **Each test inlines its own subject code** (no shared `*_CODE` constants) so it reads self-contained.
 - Tests keep explicit `file("…/src/main/kotlin/…")` / `file("…/src/commonMain/kotlin/…")` source
   placement and explicit `gradle(":consumer:test")` / `gradle(":consumer:jvmTest", …)` task calls, so
@@ -65,7 +66,7 @@ variant of the checker tests proving the FIR diagnostics fire on common-code com
 - **`SweetSpiPlugin` auto-adds the runtime dependency** to `main` (JVM) / `commonMain` (KMP) when
   applied — module build files must NOT add the runtime manually.
 - **Gradle Kotlin DSL allows multiple `dependencies { }` / `kotlin { }` blocks**, so the writer can emit
-  a `dependencies { implementation(kotlin("test")) }` block and the trailing lambda can append another
+  a `dependencies { implementation(kotlin("test")) }` block and the caller can `appendText` another
   `dependencies { api(project(":service")) }` block; both are valid.
 - **ABI validation is always enabled but harmless in the multi-module tests.** The Kotlin
   `abiValidation { enabled = true }` only wires its check task into `check`. The M0 multi-module tests
@@ -108,66 +109,56 @@ Create `sweetspi-tests/src/test/kotlin/api/BuildFiles.kt`:
 
 package dev.whyoleg.sweetspi.tests.api
 
+import java.nio.file.*
+
 private const val ABI_IMPORT = "import org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation"
 
 // Writes <path>/build.gradle.kts for a kotlin-jvm + sweetspi module. path="" = root module.
-// ABI validation is enabled and kotlin("test") is always added. `additionalContent` returns extra
-// build-script text appended to the file, e.g. { "dependencies { api(project(\":service\")) }" }.
+// ABI validation is enabled and kotlin("test") is always added. Returns the written file's Path so the
+// caller can chain `.appendText(...)`, e.g. .appendText("dependencies { api(project(\":service\")) }").
 context(project: TestProject)
-fun jvmBuildFile(
-    path: String = "",
-    additionalContent: () -> String = { "" },
-) {
-    writeBuildFile(path, buildString {
-        appendLine(ABI_IMPORT).appendLine()
-        appendLine("plugins {")
-        appendLine("    alias(libs.plugins.kotlin.jvm)")
-        appendLine("    alias(libs.plugins.sweetspi)")
-        appendLine("}")
-        appendLine("@OptIn(ExperimentalAbiValidation::class)")
-        appendLine("kotlin { abiValidation { enabled = true } }")
-        appendLine("dependencies {")
-        appendLine("    implementation(kotlin(\"test\"))")
-        appendLine("}")
-        val extra = additionalContent()
-        if (extra.isNotBlank()) appendLine(extra)
-    })
-}
+fun jvmBuildFile(path: String = ""): Path = writeBuildFile(path, buildString {
+    appendLine(ABI_IMPORT).appendLine()
+    appendLine("plugins {")
+    appendLine("    alias(libs.plugins.kotlin.jvm)")
+    appendLine("    alias(libs.plugins.sweetspi)")
+    appendLine("}")
+    appendLine("@OptIn(ExperimentalAbiValidation::class)")
+    appendLine("kotlin { abiValidation { enabled = true } }")
+    appendLine("dependencies {")
+    appendLine("    implementation(kotlin(\"test\"))")
+    appendLine("}")
+})
 
 // Writes <path>/build.gradle.kts for a kotlin-multiplatform + sweetspi module. path="" = root module.
 // `targets` are target names rendered as calls, e.g. listOf("jvm", "macosArm64") -> jvm(); macosArm64().
-// ABI validation is enabled and kotlin("test") is always added to commonTest. `additionalContent`
-// returns extra build-script text appended to the file, e.g.
-// { "kotlin { sourceSets.commonMain.dependencies { api(project(\":service\")) } }" }.
+// ABI validation is enabled and kotlin("test") is always added to commonTest. Returns the written
+// file's Path so the caller can chain `.appendText(...)`, e.g.
+// .appendText("kotlin { sourceSets.commonMain.dependencies { api(project(\":service\")) } }").
 context(project: TestProject)
 fun multiplatformBuildFile(
     path: String = "",
     targets: List<String> = emptyList(),
-    additionalContent: () -> String = { "" },
-) {
-    writeBuildFile(path, buildString {
-        appendLine(ABI_IMPORT).appendLine()
-        appendLine("plugins {")
-        appendLine("    alias(libs.plugins.kotlin.multiplatform)")
-        appendLine("    alias(libs.plugins.sweetspi)")
-        appendLine("}")
-        appendLine("@OptIn(ExperimentalAbiValidation::class)")
-        appendLine("kotlin {")
-        appendLine("    abiValidation { enabled = true }")
-        targets.forEach { appendLine("    $it()") }
-        appendLine("    sourceSets.commonTest.dependencies {")
-        appendLine("        implementation(kotlin(\"test\"))")
-        appendLine("    }")
-        appendLine("}")
-        val extra = additionalContent()
-        if (extra.isNotBlank()) appendLine(extra)
-    })
-}
+): Path = writeBuildFile(path, buildString {
+    appendLine(ABI_IMPORT).appendLine()
+    appendLine("plugins {")
+    appendLine("    alias(libs.plugins.kotlin.multiplatform)")
+    appendLine("    alias(libs.plugins.sweetspi)")
+    appendLine("}")
+    appendLine("@OptIn(ExperimentalAbiValidation::class)")
+    appendLine("kotlin {")
+    appendLine("    abiValidation { enabled = true }")
+    targets.forEach { appendLine("    $it()") }
+    appendLine("    sourceSets.commonTest.dependencies {")
+    appendLine("        implementation(kotlin(\"test\"))")
+    appendLine("    }")
+    appendLine("}")
+})
 
 context(project: TestProject)
-private fun writeBuildFile(path: String, content: String) {
+private fun writeBuildFile(path: String, content: String): Path {
     val filePath = if (path.isEmpty()) "build.gradle.kts" else "$path/build.gradle.kts"
-    file(filePath).kts(content)
+    return file(filePath).also { it.kts(content) }
 }
 ```
 
@@ -297,7 +288,7 @@ git commit -m "test(api): extract jvm/multiplatform build-file writers + multi-m
 - [ ] **Step 1: Write the failing test**
 
 Create `sweetspi-tests/src/test/kotlin/MultiModuleServiceTest.kt` (subject code inlined so the test is
-self-contained; project dependencies returned from each writer's trailing lambda):
+self-contained; project dependencies chained onto each writer's returned `Path` via `appendText`):
 
 ```kotlin
 /*
@@ -307,6 +298,7 @@ self-contained; project dependencies returned from each writer's trailing lambda
 package dev.whyoleg.sweetspi.tests
 
 import dev.whyoleg.sweetspi.tests.api.*
+import kotlin.io.path.*
 import kotlin.test.*
 
 class MultiModuleServiceTest : TestProjectBasedTest() {
@@ -326,11 +318,11 @@ class MultiModuleServiceTest : TestProjectBasedTest() {
             """.trimIndent()
         )
 
-        jvmBuildFile("provider") {
+        jvmBuildFile("provider").appendText(
             """
             dependencies { api(project(":service")) }
             """.trimIndent()
-        }
+        )
         file("provider/src/main/kotlin/EnglishGreeting.kt").kotlin(
             "sweettests.provider",
             """
@@ -342,11 +334,11 @@ class MultiModuleServiceTest : TestProjectBasedTest() {
             """.trimIndent()
         )
 
-        jvmBuildFile("consumer") {
+        jvmBuildFile("consumer").appendText(
             """
             dependencies { implementation(project(":provider")) }
             """.trimIndent()
-        }
+        )
         file("consumer/src/test/kotlin/ConsumerTest.kt").kotlin(
             "sweettests.consumer",
             """
@@ -410,11 +402,11 @@ the dependency-block form, and the run tasks differ from `testJvm`):
             """.trimIndent()
         )
 
-        multiplatformBuildFile("provider", targets = targets) {
+        multiplatformBuildFile("provider", targets = targets).appendText(
             """
             kotlin { sourceSets.commonMain.dependencies { api(project(":service")) } }
             """.trimIndent()
-        }
+        )
         file("provider/src/commonMain/kotlin/EnglishGreeting.kt").kotlin(
             "sweettests.provider",
             """
@@ -426,11 +418,11 @@ the dependency-block form, and the run tasks differ from `testJvm`):
             """.trimIndent()
         )
 
-        multiplatformBuildFile("consumer", targets = targets) {
+        multiplatformBuildFile("consumer", targets = targets).appendText(
             """
             kotlin { sourceSets.commonMain.dependencies { implementation(project(":provider")) } }
             """.trimIndent()
-        }
+        )
         file("consumer/src/commonTest/kotlin/ConsumerTest.kt").kotlin(
             "sweettests.consumer",
             """
@@ -659,17 +651,18 @@ is pre-existing and unrelated to M0 — note it, do not attempt to fix it here.
 
 **Reviewer constraints honored:** no JVM-vs-MPP axis abstraction (separate `jvmBuildFile` /
 `multiplatformBuildFile`); build-oriented names; ABI validation always enabled; `kotlin("test")` always
-added; no `dependencies` argument — extra build-script content supplied via a trailing lambda; each
-test inlines its own subject code (no shared constants); tests keep explicit source placement and
-`gradle(":consumer:…")` task calls; writers reused by the existing bootstraps (Task 1 Step 3). ✅
+added; no `dependencies` argument — writers return the file `Path` and callers chain `.appendText(...)`
+for extra content; each test inlines its own subject code (no shared constants); tests keep explicit
+source placement and `gradle(":consumer:…")` task calls; writers reused by the existing bootstraps
+(Task 1 Step 3). ✅
 
 **Placeholder scan:** no TBD/TODO-as-instruction; every code step shows full content; run commands and
 expected outcomes concrete. The two conditional branches (native flakiness in Task 3; compile-task
 choice in Task 4) are explicit decision branches with named alternatives, not placeholders. ✅
 
-**Type/name consistency:** `jvmBuildFile(path, additionalContent)` and
-`multiplatformBuildFile(path, targets, additionalContent)` are defined in Task 1 Step 1 and called with
-those exact parameters in Tasks 1–3. `bootstrapMultiModuleProject(modules: List<String>)` defined in
+**Type/name consistency:** `jvmBuildFile(path): Path` and
+`multiplatformBuildFile(path, targets): Path` are defined in Task 1 Step 1 and called with those exact
+parameters in Tasks 1–3 (return value ignored in the bootstraps; `.appendText(...)`-chained in Tasks 2–3). `bootstrapMultiModuleProject(modules: List<String>)` defined in
 Task 1 Step 2, called in Tasks 2–3. Module dirs `service`/`provider`/`consumer`, packages
 `sweettests.{service,provider,consumer}`, and the `GreetingService.greet()` / `EnglishGreeting`
 symbols are consistent across Tasks 2–3. Checker messages in Task 4 are copied verbatim from
