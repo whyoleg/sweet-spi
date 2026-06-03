@@ -99,6 +99,8 @@ fun jvmExecutionScenario(block: JvmProjectScope.() -> Unit) {
         testModule = scope.root
     }
 
+    check(testModule.hasTest) { "scenario has no test body — call test { ... }" }
+
     val prefix = if (testModule.name.isEmpty()) "" else ":${testModule.name}"
     gradle("$prefix:test") {
         assertTrue(task("$prefix:test")!!.outcome.isPositive, "jvm test should pass")
