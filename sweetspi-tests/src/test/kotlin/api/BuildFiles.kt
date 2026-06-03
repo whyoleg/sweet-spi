@@ -55,3 +55,60 @@ private fun writeBuildFile(path: String, content: String): Path {
     val filePath = if (path.isEmpty()) "build.gradle.kts" else "$path/build.gradle.kts"
     return file(filePath).also { it.kts(content) }
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Multiplatform hierarchy helpers — for tests that exercise FIR generation across source-set DAGs.
+// Usage: bootstrapKotlinMultiplatformProject() then
+//   file("build.gradle.kts").appendText(multiplatformTargets(extra = nonJvmSourceSets()))
+// The returned text is a standalone `kotlin { }` block (KGP merges multiple `kotlin {}` blocks).
+// On a macOS host only macos*/ios-simulator native tests execute; linuxX64 compiles+links but its
+// test task is skipped — so use it for per-target compile coverage, assert only host-runnable tests.
+// ---------------------------------------------------------------------------------------------------
+
+fun multiplatformTargets(
+    jvm: Boolean = true,
+    natives: List<String> = listOf("macosArm64", "linuxX64"),
+    js: Boolean = true,
+    wasmJs: Boolean = true,
+    extra: String = "",
+): String = buildString {
+    appendLine("kotlin {")
+    if (jvm) appendLine("    jvm()")
+    natives.forEach { appendLine("    $it()") }
+    if (js) appendLine("    js { nodejs() }")
+    if (wasmJs) appendLine("    wasmJs { nodejs() }")
+    if (extra.isNotEmpty()) appendLine(extra.prependIndent("    "))
+    appendLine("}")
+}
+
+// Inserts a custom `nonJvm` intermediate between commonMain and the native/js/wasmJs groups
+// (main + test). A `@Service` here is never seen by the jvm compilation. Requires native + js + wasmJs
+// targets to be declared.
+fun nonJvmSourceSets(): String = """
+    |applyDefaultHierarchyTemplate()
+    |sourceSets {
+    |    val nonJvm by creating { dependsOn(commonMain.get()) }
+    |    nativeMain.get().dependsOn(nonJvm)
+    |    jsMain.get().dependsOn(nonJvm)
+    |    wasmJsMain.get().dependsOn(nonJvm)
+    |    val nonJvmTest by creating { dependsOn(commonTest.get()) }
+    |    nativeTest.get().dependsOn(nonJvmTest)
+    |    jsTest.get().dependsOn(nonJvmTest)
+    |    wasmJsTest.get().dependsOn(nonJvmTest)
+    |}
+""".trimMargin()
+
+// Inserts a custom `jvmAndNative` intermediate shared by jvm + native (main + test). A `@Service` here
+// is split across the registry platform (native) and the META-INF platform (jvm) — the divergence case.
+// Requires jvm + native targets to be declared.
+fun jvmAndNativeSourceSets(): String = """
+    |applyDefaultHierarchyTemplate()
+    |sourceSets {
+    |    val jvmAndNative by creating { dependsOn(commonMain.get()) }
+    |    jvmMain.get().dependsOn(jvmAndNative)
+    |    nativeMain.get().dependsOn(jvmAndNative)
+    |    val jvmAndNativeTest by creating { dependsOn(commonTest.get()) }
+    |    jvmTest.get().dependsOn(jvmAndNativeTest)
+    |    nativeTest.get().dependsOn(jvmAndNativeTest)
+    |}
+""".trimMargin()

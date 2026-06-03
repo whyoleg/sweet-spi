@@ -273,6 +273,14 @@ compiles with the generated descriptor and loads services at runtime via `Servic
 **Why:** G7. Only commented sketches exist (in the now-deleted `wip.kt` — preserve the three options
 below before deletion in M1).
 
+**Concrete motivation found in M1 (2026-06-03):** with G8 fixed, cross-module SPI now works on JVM
+(META-INF) and native (whole-program link), but **not on js/wasm**: a `@Provides` in a separately-linked
+module registers via an `@EagerInitialization` property, and on js/wasm that module's top-level
+initializers run only when the module is actually loaded — the consumer reaches the provider module only
+reflectively (associated-object registry), so it is never loaded and `load()` returns 0. This is exactly
+what M6 must solve. Encoded as the `@Ignore`d `MultiplatformHierarchyTest.multiModuleProviderInNonJvm_jsWasm`
+(un-ignore when M6 lands). Single-module js/wasm SPI is unaffected and works.
+
 **Scope** — evaluate and recommend among the three approaches:
 1. `@JsExport`-based export working for **both** js and wasm-js (a `@JsExport` service surface).
 2. Wasm **multi-module** compilation (per-module exported service factories).
