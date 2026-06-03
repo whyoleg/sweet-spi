@@ -4,6 +4,16 @@
 
 **Goal:** Lock current cross-module SPI discovery and checker behavior behind tests so the M1 FIR/IR refactor can be proven behavior-preserving.
 
+> **Update (2026-06-03, during execution):**
+> - **G8 surfaced:** cross-module SPI is **broken on JVM** — `$ServiceProvider` is generated in IR, so a
+>   dependent module can't resolve it and `:provider` compilation fails (`Provider class not found`).
+>   Per decision, the multi-module tests (`MultiModuleServiceTest`) are committed but **`@Ignore`d** with
+>   a pointer to M1; they *encode* the cross-module requirement and become M1's acceptance criteria
+>   (M1 fixes it by generating `$ServiceProvider`/registry/holder in FIR). The suite stays green via the
+>   single-module + KMP-checker tests, which pin behavior that works today.
+> - **Process:** per-task spec/quality subagent reviews are dropped from here on — implement and let the
+>   tests be the validating factor; review later.
+
 **Architecture:** Extract small build-file writers (`jvmBuildFile` / `multiplatformBuildFile`) that
 emit a module's `build.gradle.kts` — plugins, ABI validation (always on), targets, and an always-added
 `kotlin("test")` — and return the written file's `Path` so the caller can chain `.appendText(...)` to

@@ -44,6 +44,7 @@ jvm / macosArm64 / js / wasmJs / wasmWasi; JVM-only checker tests.
 | G5 | JVM `ServiceLoader.load` does a reflective `declaredClasses` lookup → defeats R8 | `ServiceLoader.jvm.kt:64` |
 | G6 | `module-info.properties` is produced but never consumed; gradle wiring commented out; `exports` lists every package | `SweetSpiPlugin.kt:77`, `ModuleInfoJavaBuilder.kt` |
 | G7 | `@JsExport` SPI exists only as commented sketches | `wip.kt` |
+| G8 | **Cross-module SPI broken on JVM**: `$ServiceProvider` is generated in IR, so it is not in the consumable ABI; a dependent module's `@Provides` fails to resolve it (`Provider class not found for service type`) and `:provider` compilation fails | `ir/SweetIrGenerationExtension.kt:293` — confirmed 2026-06-03 by `MultiModuleServiceTest.testJvm` |
 
 ### North star
 
@@ -107,6 +108,12 @@ Gradle builds via `TestProjectBasedTest` against published dev artifacts.
 
 **Why:** lock current cross-module + checker behavior before refactoring in M1.
 
+**Finding (2026-06-03):** writing the multi-module test surfaced **G8** — cross-module SPI does **not**
+currently work on JVM (the IR-generated `$ServiceProvider` isn't resolvable from a dependent module).
+Per decision, the multi-module tests are committed but `@Ignore`d (with a pointer to M1); they *encode*
+the cross-module requirement and become M1's acceptance criteria. M0 therefore pins the behavior that
+*does* work today (single-module discovery + KMP checkers) and documents the gap that does not.
+
 **Scope**
 - Multi-module functional test: ≥3 Gradle modules in one test project — `@Service` in module A,
   `@Provides` impl in module B, `ServiceLoader.load` consumer in module C — asserting discovery
@@ -123,14 +130,22 @@ Gradle builds via `TestProjectBasedTest` against published dev artifacts.
 - New `sweetspi-tests/src/test/kotlin/MultiModuleServiceTest.kt`.
 - `sweetspi-tests/src/test/kotlin/CheckerTest.kt` — KMP variant/parametrization.
 
-**Exit criteria:** new tests green; they remain green unchanged through M1 (the proof that M1 is
-behavior-preserving).
+**Exit criteria:** the KMP checker tests and the single-module suite are green; the multi-module tests
+are committed `@Ignore`d (documenting G8) and must remain stable through M1's refactor, then be
+un-ignored and turned green by M1.
 
 ### M1 — Foundation: FIR/IR refactor + usage collection
 
-**Why:** G1, G2. Clean structure to build M2–M5 on, and the shared usage-collection prerequisite.
+**Why:** G1, G2, **G8**. Clean structure to build M2–M5 on, the shared usage-collection prerequisite,
+and the fix for cross-module discovery.
 
 **Scope**
+- **Fix cross-module discovery (G8): generate `$ServiceProvider` (and the klib `$ServiceProviderRegistry`
+  / holder) in FIR**, not IR, so they become part of the consumable ABI and a dependent module's
+  `@Provides` can resolve `<Service>$ServiceProvider` (and `@EagerInitialization` registration can
+  reference the registry) across module boundaries. This is the core behavioral change of M1; the IR
+  generators then only emit bodies/impl classes for declarations the frontend already knows about.
+  Acceptance: the `@Ignore` comes off `MultiModuleServiceTest` and it goes green on JVM + klib.
 - **Refactor** `ir/SweetIrGenerationExtension.kt` (currently 569 lines) into focused files. Suggested
   layout (confirm naming as you go): orchestration entry point; `ServiceProviderGenerator`
   (`@Service` → `$ServiceProvider` nested + klib `$ServiceProviderRegistry`); 
@@ -149,12 +164,15 @@ behavior-preserving).
   `java.util.ServiceLoader.load(...)` shape or the non-inline `load(KClass)` overload. This finding
   directly informs M4.
 
-**Files:** `sweetspi-compiler-plugin/src/main/kotlin/ir/**`, delete `wip.kt`.
+**Files:** `sweetspi-compiler-plugin/src/main/kotlin/{fir,ir}/**` (new FIR declaration-generation
+extension for `$ServiceProvider`/registry/holder), delete `wip.kt`.
 
-**Exit criteria:** M0 tests still green (unchanged); a focused test asserts usage-collection returns
-the right `ClassId`s for each `load` form; `./gradlew :sweetspi-compiler-plugin:compileKotlin`
-succeeds with `-Werror`. **No behavior change** — purely structural + the new (not-yet-consumed)
-collector.
+**Exit criteria:** the M0 single-module + KMP-checker tests stay green; **the `@Ignore` is removed from
+`MultiModuleServiceTest` and it passes on JVM + klib** (cross-module fixed); a focused test asserts
+usage-collection returns the right `ClassId`s for each `load` form; `./gradlew
+:sweetspi-compiler-plugin:compileKotlin` succeeds with `-Werror`. Note: unlike originally framed, M1 is
+**not** purely structural — moving `$ServiceProvider` generation IR→FIR is a deliberate behavioral fix
+(G8); the refactor and usage-collector ride along.
 
 **Risk note:** if the reified-inline type argument cannot be recovered at IR call sites, record the
 limitation here and adjust M4's approach accordingly before starting M4.
