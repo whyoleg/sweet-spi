@@ -80,9 +80,10 @@ are out of scope.
 
 | ID | Goal | Depends on | Kind | Status |
 |----|------|-----------|------|--------|
-| M0 | Multi-module + KMP-checker regression net | — | tests | planned |
-| M1 | FIR/IR refactor + real usage collection | M0 | refactor + feature | planned |
-| M2 | Honor `Service` compat enum in IR/resources | M1 | feature | planned |
+| M0 | Multi-module + KMP-checker regression net | — | tests | done |
+| M1 | Cross-module fix (G8) + FIR/IR refactor | M0 | refactor + fix | G8 done; refactor pending |
+| M1b | Test consolidation & MPP hierarchy alignment | M1 | tests | in progress |
+| M2 | Honor `Service` compat enum in IR/resources + `ServiceLoader` usage collection | M1 | feature | planned |
 | M3 | `@JvmProvides` checker + IR | M1 | feature | planned |
 | M4 | R8-friendly `ServiceLoader.load` IR rewrite (JVM) | M1, M2 | feature | planned |
 | M5 | Generate `module-info.java` in gradle plugin | M1, M2 | feature | planned |
@@ -154,25 +155,44 @@ and the fix for cross-module discovery.
   (`annotateWith`, provider-impl construction). Keep the JVM vs klib split explicit via the existing
   `JvmSweetIrPluginContext` / `KlibSweetIrPluginContext` sealed contexts.
 - **Delete** `sweetspi-runtime/src/commonMain/kotlin/wip.kt` (design graveyard; its live ideas are
-  captured in M2/M4/M6). Remove the disabled `ServiceLoaderUsagesCollector` remnants once replaced.
-- **Implement `ServiceLoaderUsagesCollector`** for real: walk IR bodies, match calls whose
-  `callableId` is in `SweetNames.AllServiceLoaderCalls` (sweetspi `ServiceLoader.load` reified +
-  `KClass` overloads, and `java.util.ServiceLoader.load`), extract the **service type** from the
-  reified type argument / `KClass` value argument, return `Set<ClassId>`. Note the reified overload
-  is `inline` — confirm how the type argument survives to IR at the call site (verify via IDEA MCP);
-  if the reified call is fully inlined, detection may need to target the resulting
-  `java.util.ServiceLoader.load(...)` shape or the non-inline `load(KClass)` overload. This finding
-  directly informs M4.
+  captured in M2/M4/M6).
+- **`ServiceLoaderUsagesCollector` moved to M2** (2026-06-03): it only feeds the JVM `module-info`
+  `uses` section, so it belongs with the JVM-compatibility work, not the cross-module fix. The stub
+  stays as-is until M2. Its `callableId`/reified-`inline` extraction notes now live in the M2 scope.
 
 **Files:** `sweetspi-compiler-plugin/src/main/kotlin/{fir,ir}/**` (new FIR declaration-generation
 extension for `$ServiceProvider`/registry/holder), delete `wip.kt`.
 
 **Exit criteria:** the M0 single-module + KMP-checker tests stay green; **the `@Ignore` is removed from
-`MultiModuleServiceTest` and it passes on JVM + klib** (cross-module fixed); a focused test asserts
-usage-collection returns the right `ClassId`s for each `load` form; `./gradlew
-:sweetspi-compiler-plugin:compileKotlin` succeeds with `-Werror`. Note: unlike originally framed, M1 is
-**not** purely structural — moving `$ServiceProvider` generation IR→FIR is a deliberate behavioral fix
-(G8); the refactor and usage-collector ride along.
+`MultiModuleServiceTest` and it passes on JVM + klib** (cross-module fixed — DONE); the IR monolith is
+split into focused files and `wip.kt` is deleted; `./gradlew :sweetspi-compiler-plugin:compileKotlin`
+succeeds with `-Werror`. Note: M1 is **not** purely structural — moving `$ServiceProvider`/registry
+generation IR→FIR was a deliberate behavioral fix (G8, done); the refactor rides along. (Usage
+collection moved to M2.)
+
+### M1b — Test consolidation & MPP hierarchy alignment
+
+**Why:** the test suite grew organically (jvm/kmp, single/multi-module, provider forms, source-set
+hierarchies) with inconsistent target matrices and ad-hoc `dependsOn` setup. Align it so coverage is
+self-evident before building more features on top.
+
+**Scope**
+- **Migrate** the custom source-set wiring from manual `dependsOn` to
+  `applyDefaultHierarchyTemplate { common { group("nonJvm"){…}; group("jvmAndNative"){…} } }`
+  (auto-creates the `*Test` source sets too).
+- **One canonical KMP target matrix** for execution tests: `jvm`, `macosArm64` (run), `linuxX64`
+  (compile-only on macOS host), `wasmJs` (run), `wasmWasi` (run). `js` only in the known-limitation
+  tracker (cross-module js is broken — see M6). Principle: don't duplicate `js` where `wasmJs` covers it.
+- **Standard execution-project helper** that declares the canonical matrix + the shared hierarchy
+  (`nonJvm`/`jvmAndNative` always created), so tests just place files in `src/<sourceSet>/kotlin`.
+  Checker tests keep their minimal jvm-only setup.
+- **Reorganize execution tests by topology** for clear coverage: `ProviderFormsTest`
+  (object/class/ctor variants/function/property/companion/generic), `SourceSetPlacementTest`
+  (commonMain / `nonJvm` / `jvmAndNative`), `CrossModuleTest` (multi-module jvm + kmp, provider in an
+  intermediate, + the `@Ignore`d js cross-module tracker). Keep `CheckerTest` (jvm) + `CheckerKmpTest`.
+
+**Exit criteria:** all execution tests run on the canonical matrix via the shared helper; no manual
+`dependsOn`; the topology split is in place; full `:sweetspi-tests:test` green (js tracker `@Ignore`d).
 
 **Risk note:** if the reified-inline type argument cannot be recovered at IR call sites, record the
 limitation here and adjust M4's approach accordingly before starting M4.
@@ -195,7 +215,16 @@ Resolve the enum value in FIR or IR (verify how to read an enum annotation argum
 The resource-writing site is `generateJvmServices` in the (refactored) IR; the `serviceId`/impl-id
 mapping logic (`toJvmString`) already exists.
 
-**Files:** refactored IR generators + resource writer.
+- **Implement `ServiceLoaderUsagesCollector`** (moved from M1, 2026-06-03): walk IR bodies, match calls
+  whose `callableId` is in `SweetNames.AllServiceLoaderCalls` (sweetspi `ServiceLoader.load` reified +
+  `KClass` overloads, and `java.util.ServiceLoader.load`), extract the **service type** from the reified
+  type argument / `KClass` value argument, return `Set<ClassId>` feeding the JVM `module-info`
+  `uses` section (consumed in M5). The reified overload is `inline` — confirm how the type argument
+  survives to IR at the call site (verify via IDEA MCP); if fully inlined, target the resulting
+  `java.util.ServiceLoader.load(...)` shape or the non-inline `load(KClass)` overload. This finding also
+  informs M4. Add a focused test asserting the right `ClassId`s per `load` form.
+
+**Files:** refactored IR generators + resource writer; `ir` usage collector.
 
 **Exit criteria:** one functional test per mode (JVM); for `FULL_COMPATIBILITY`, a test where a
 **Java** consumer (or plain `java.util.ServiceLoader`) loads the service. Existing

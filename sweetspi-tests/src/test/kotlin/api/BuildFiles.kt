@@ -5,6 +5,7 @@
 package dev.whyoleg.sweetspi.tests.api
 
 import java.nio.file.*
+import kotlin.io.path.*
 
 private const val ABI_IMPORT = "import org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation"
 
@@ -57,58 +58,48 @@ private fun writeBuildFile(path: String, content: String): Path {
 }
 
 // ---------------------------------------------------------------------------------------------------
-// Multiplatform hierarchy helpers — for tests that exercise FIR generation across source-set DAGs.
-// Usage: bootstrapKotlinMultiplatformProject() then
-//   file("build.gradle.kts").appendText(multiplatformTargets(extra = nonJvmSourceSets()))
-// The returned text is a standalone `kotlin { }` block (KGP merges multiple `kotlin {}` blocks).
-// On a macOS host only macos*/ios-simulator native tests execute; linuxX64 compiles+links but its
-// test task is skipped — so use it for per-target compile coverage, assert only host-runnable tests.
+// Canonical multiplatform execution setup — the single target matrix + source-set hierarchy used by
+// all execution tests (provider forms, source-set placement, cross-module).
+//
+// Targets: jvm, macosArm64 (run), linuxX64 (compile-only on a macOS host — its test task is skipped),
+// wasmJs + wasmWasi (run). `js` is intentionally absent (wasmJs covers the web family; cross-module js
+// is a known limitation) — tests that need it add `kotlin { js { nodejs() } }` explicitly.
+//
+// Shared intermediate source sets, always created via the default hierarchy template extension:
+//   - nonJvm        : native + js + wasmJs + wasmWasi  (everything except jvm)
+//   - jvmAndNative  : jvm + native                     (the registry/META-INF divergence case)
+// The template creates the matching `*Test` source sets automatically.
 // ---------------------------------------------------------------------------------------------------
 
-fun multiplatformTargets(
-    jvm: Boolean = true,
-    natives: List<String> = listOf("macosArm64", "linuxX64"),
-    js: Boolean = true,
-    wasmJs: Boolean = true,
-    extra: String = "",
-): String = buildString {
-    appendLine("kotlin {")
-    if (jvm) appendLine("    jvm()")
-    natives.forEach { appendLine("    $it()") }
-    if (js) appendLine("    js { nodejs() }")
-    if (wasmJs) appendLine("    wasmJs { nodejs() }")
-    if (extra.isNotEmpty()) appendLine(extra.prependIndent("    "))
-    appendLine("}")
-}
-
-// Inserts a custom `nonJvm` intermediate between commonMain and the native/js/wasmJs groups
-// (main + test). A `@Service` here is never seen by the jvm compilation. Requires native + js + wasmJs
-// targets to be declared.
-fun nonJvmSourceSets(): String = """
-    |applyDefaultHierarchyTemplate()
-    |sourceSets {
-    |    val nonJvm by creating { dependsOn(commonMain.get()) }
-    |    nativeMain.get().dependsOn(nonJvm)
-    |    jsMain.get().dependsOn(nonJvm)
-    |    wasmJsMain.get().dependsOn(nonJvm)
-    |    val nonJvmTest by creating { dependsOn(commonTest.get()) }
-    |    nativeTest.get().dependsOn(nonJvmTest)
-    |    jsTest.get().dependsOn(nonJvmTest)
-    |    wasmJsTest.get().dependsOn(nonJvmTest)
+private val MP_EXECUTION_TARGETS = """
+    |@OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class, org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi::class)
+    |kotlin {
+    |    jvm()
+    |    macosArm64()
+    |    linuxX64()
+    |    wasmJs { nodejs() }
+    |    wasmWasi { nodejs() }
+    |    applyDefaultHierarchyTemplate {
+    |        common {
+    |            group("nonJvm") {
+    |                withNative()
+    |                withJs()
+    |                withWasmJs()
+    |                withWasmWasi()
+    |            }
+    |            group("jvmAndNative") {
+    |                withJvm()
+    |                withNative()
+    |            }
+    |        }
+    |    }
     |}
+    |
 """.trimMargin()
 
-// Inserts a custom `jvmAndNative` intermediate shared by jvm + native (main + test). A `@Service` here
-// is split across the registry platform (native) and the META-INF platform (jvm) — the divergence case.
-// Requires jvm + native targets to be declared.
-fun jvmAndNativeSourceSets(): String = """
-    |applyDefaultHierarchyTemplate()
-    |sourceSets {
-    |    val jvmAndNative by creating { dependsOn(commonMain.get()) }
-    |    jvmMain.get().dependsOn(jvmAndNative)
-    |    nativeMain.get().dependsOn(jvmAndNative)
-    |    val jvmAndNativeTest by creating { dependsOn(commonTest.get()) }
-    |    jvmTest.get().dependsOn(jvmAndNativeTest)
-    |    nativeTest.get().dependsOn(jvmAndNativeTest)
-    |}
-""".trimMargin()
+// Writes <path>/build.gradle.kts for a kotlin-multiplatform + sweetspi module using the canonical
+// execution matrix + hierarchy above. Returns the Path so the caller can chain dependency config, e.g.
+// .appendText("kotlin { sourceSets.commonMain.dependencies { api(project(\":service\")) } }").
+context(project: TestProject)
+fun multiplatformExecutionBuildFile(path: String = ""): Path =
+    multiplatformBuildFile(path).also { it.appendText(MP_EXECUTION_TARGETS) }

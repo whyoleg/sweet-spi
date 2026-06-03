@@ -6,10 +6,12 @@ package dev.whyoleg.sweetspi.tests
 
 import dev.whyoleg.sweetspi.tests.api.*
 import org.intellij.lang.annotations.*
-import kotlin.io.path.*
 import kotlin.test.*
 
-class SimpleServiceTest : TestProjectBasedTest() {
+// Single-module execution across every supported @Provides shape (object, class with various
+// constructors, top-level/object/companion function & property, generic service). A dedicated jvm-only
+// case plus the canonical kmp matrix (see multiplatformExecutionBuildFile).
+class ProviderFormsTest : TestProjectBasedTest() {
 
     @Test
     fun testJvm() = context(project) {
@@ -25,7 +27,7 @@ class SimpleServiceTest : TestProjectBasedTest() {
             """
             import dev.whyoleg.sweetspi.*
             import kotlin.test.*
-                            
+
             class SimpleTest {
                 @Test
                 fun test() {
@@ -111,7 +113,7 @@ class SimpleServiceTest : TestProjectBasedTest() {
         class SimpleServiceImpl(val string: String) : SimpleService {
             override fun toString() = "SimpleServiceImpl($string)"
         }
-        @Provides(SimpleService::class) fun provideSimpleService() = SimpleServiceImpl("default") 
+        @Provides(SimpleService::class) fun provideSimpleService() = SimpleServiceImpl("default")
         """.trimIndent(),
         testCode = """
         assertEquals(SimpleServiceImpl::class, provider.type)
@@ -127,7 +129,7 @@ class SimpleServiceTest : TestProjectBasedTest() {
         class SimpleServiceImpl(val string: String) : SimpleService {
             override fun toString() = "SimpleServiceImpl($string)"
         }
-        @Provides(SimpleService::class) fun provideSimpleService(string: String = "default") = SimpleServiceImpl(string) 
+        @Provides(SimpleService::class) fun provideSimpleService(string: String = "default") = SimpleServiceImpl(string)
         """.trimIndent(),
         testCode = """
         assertEquals(SimpleServiceImpl::class, provider.type)
@@ -237,18 +239,7 @@ class SimpleServiceTest : TestProjectBasedTest() {
         @Language("kotlin") mainCode: String,
         @Language("kotlin") testCode: String,
     ) = context(project) {
-        bootstrapKotlinMultiplatformProject()
-        file("build.gradle.kts").appendText(
-            """
-            kotlin {
-                jvm()
-                macosArm64()
-                js { nodejs() }
-                wasmJs { nodejs() }
-                wasmWasi { nodejs() }
-            }
-            """.trimIndent()
-        )
+        bootstrapKotlinMultiplatformExecutionProject()
 
         file("src/commonMain/kotlin/SimpleService.kt").kotlin(
             """
@@ -262,7 +253,7 @@ class SimpleServiceTest : TestProjectBasedTest() {
             """
             |import dev.whyoleg.sweetspi.*
             |import kotlin.test.*
-            |                
+            |
             |class SimpleServiceTest {
             |    @Test
             |    fun test() {
@@ -273,25 +264,12 @@ class SimpleServiceTest : TestProjectBasedTest() {
             """.trimMargin()
         )
 
-        // TODO: ":updateKotlinAbi :check" causes:
-        //  need to reproduce and report it
-//        A problem was found with the configuration of task ':updateKotlinAbi' (type 'KotlinAbiUpdateTask').
-//        - Gradle detected a problem with the following location: '/Users/Oleg.Yukhnevich/Projects/whyoleg/sweet-spi/sweetspi-tests/build/test-projects/dev.whyoleg.sweetspi.tests.SimpleServiceTest/testMultiplatform/api'.
-//
-//        Reason: Task ':checkKotlinAbi' uses this output of task ':updateKotlinAbi' without declaring an explicit or implicit dependency. This can lead to incorrect results being produced, depending on what order the tasks are executed.
-//
-//        Possible solutions:
-//        1. Declare task ':updateKotlinAbi' as an input of ':checkKotlinAbi'.
-//        2. Declare an explicit dependency on ':updateKotlinAbi' from ':checkKotlinAbi' using Task#dependsOn.
-//        3. Declare an explicit dependency on ':updateKotlinAbi' from ':checkKotlinAbi' using Task#mustRunAfter.
-//
-//        For more information, please refer to https://docs.gradle.org/9.4.1/userguide/validation_problems.html#implicit_dependency in the Gradle documentation.
-
-        gradle(":updateKotlinAbi", forwardOutput = false)
-        gradle(/*":updateKotlinAbi", */":check") {
+        gradle(
+            ":jvmTest", ":macosArm64Test", ":wasmJsNodeTest", ":wasmWasiNodeTest",
+            ":compileTestKotlinLinuxX64"
+        ) {
             assertTrue(task(":jvmTest")!!.outcome.isPositive)
             assertTrue(task(":macosArm64Test")!!.outcome.isPositive)
-            assertTrue(task(":jsNodeTest")!!.outcome.isPositive)
             assertTrue(task(":wasmJsNodeTest")!!.outcome.isPositive)
             assertTrue(task(":wasmWasiNodeTest")!!.outcome.isPositive)
         }

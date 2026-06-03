@@ -55,6 +55,14 @@ fun bootstrapKotlinMultiplatformProject() {
     multiplatformBuildFile()
 }
 
+// Single-module multiplatform project on the canonical execution matrix + shared hierarchy
+// (see multiplatformExecutionBuildFile). Used by all single-module execution tests.
+context(project: TestProject)
+fun bootstrapKotlinMultiplatformExecutionProject() {
+    bootstrapGradleProject()
+    multiplatformExecutionBuildFile()
+}
+
 // Multi-module project: writes shared settings (with `include(...)`), properties and version catalog.
 // The caller writes each module's build file (jvmBuildFile/multiplatformBuildFile) + sources via file(...).
 // No root build.gradle.kts is written here.
