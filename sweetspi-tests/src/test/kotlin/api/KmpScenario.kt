@@ -134,17 +134,17 @@ class KmpProjectScope internal constructor() {
     fun nonJvmTest(@Language("kotlin") body: String) = root.nonJvmTest(body)
     fun jvmAndNativeTest(@Language("kotlin") body: String) = root.jvmAndNativeTest(body)
 
-    // a named module; `api` / `implementation` are project dependencies (e.g. ":service")
+    // a named module depending on other modules by path (e.g. ":service"); `api` only for now, so a
+    // consumer transitively sees a service exposed by a provider it depends on.
     fun module(
         name: String,
-        api: String? = null,
-        implementation: String? = null,
+        dependsOn: List<String> = emptyList(),
         block: KmpModuleScope.() -> Unit,
     ) {
-        modules += ModuleEntry(KmpModuleScope(name).apply(block), api, implementation)
+        modules += ModuleEntry(KmpModuleScope(name).apply(block), dependsOn)
     }
 
-    internal class ModuleEntry(val scope: KmpModuleScope, val api: String?, val implementation: String?)
+    internal class ModuleEntry(val scope: KmpModuleScope, val dependsOn: List<String>)
 }
 
 // Builds the project described by [block] on the canonical matrix and runs the consumer's test for each
@@ -159,8 +159,7 @@ fun kmpExecutionScenario(block: KmpProjectScope.() -> Unit) {
         bootstrapMultiModuleProject(scope.modules.map { it.scope.name })
         scope.modules.forEach { entry ->
             val build = multiplatformExecutionBuildFile(entry.scope.name)
-            entry.api?.let { build.appendText(commonMainDependency("api", it)) }
-            entry.implementation?.let { build.appendText(commonMainDependency("implementation", it)) }
+            entry.dependsOn.forEach { build.appendText(commonMainDependency("api", it)) }
             entry.scope.files.forEach { writeSource(entry.scope.name, it) }
         }
         testModule = scope.modules.map { it.scope }.single { it.testTargets != null }

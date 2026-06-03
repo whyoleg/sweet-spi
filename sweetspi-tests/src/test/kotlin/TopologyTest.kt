@@ -19,10 +19,10 @@ class TopologyTest : TestProjectBasedTest() {
     fun crossModuleCommon() = context(project) {
         kmpExecutionScenario {
             module("service") { commonMain("@Service interface S { fun greet(): String }") }
-            module("provider", api = ":service") {
+            module("provider", dependsOn = listOf(":service")) {
                 commonMain("""@Provides(S::class) object Impl : S { override fun greet() = "hello" }""")
             }
-            module("consumer", implementation = ":provider") {
+            module("consumer", dependsOn = listOf(":provider")) {
                 commonTest(
                     """
                     val ps = ServiceLoader.load<S>().toList()
@@ -38,10 +38,10 @@ class TopologyTest : TestProjectBasedTest() {
     fun crossModuleNonJvm() = context(project) {
         kmpExecutionScenario {
             module("service") { commonMain("@Service interface S { fun greet(): String }") }
-            module("provider", api = ":service") {
+            module("provider", dependsOn = listOf(":service")) {
                 nonJvmMain("""@Provides(S::class) object Impl : S { override fun greet() = "hello" }""")
             }
-            module("consumer", implementation = ":provider") {
+            module("consumer", dependsOn = listOf(":provider")) {
                 nonJvmTest(
                     """
                     val ps = ServiceLoader.load<S>().toList()
@@ -57,10 +57,10 @@ class TopologyTest : TestProjectBasedTest() {
     fun crossModuleJvmAndNative() = context(project) {
         kmpExecutionScenario {
             module("service") { commonMain("@Service interface S { fun greet(): String }") }
-            module("provider", api = ":service") {
+            module("provider", dependsOn = listOf(":service")) {
                 jvmAndNativeMain("""@Provides(S::class) object Impl : S { override fun greet() = "hello" }""")
             }
-            module("consumer", implementation = ":provider") {
+            module("consumer", dependsOn = listOf(":provider")) {
                 jvmAndNativeTest(
                     """
                     val ps = ServiceLoader.load<S>().toList()
@@ -95,6 +95,60 @@ class TopologyTest : TestProjectBasedTest() {
             jvmAndNativeMain("@Service interface S { fun greet(): String }")
             jvmAndNativeMain("""@Provides(S::class) object Impl : S { override fun greet() = "hello" }""")
             jvmAndNativeTest(
+                """
+                val ps = ServiceLoader.load<S>().toList()
+                assertEquals(1, ps.size)
+                assertEquals("hello", ps.single().value.greet())
+                """.trimIndent()
+            )
+        }
+    }
+
+    // --- single-module, file granularity (one commonMain(...) call == one file) ---
+
+    @Test
+    fun sameFile() = context(project) {
+        kmpExecutionScenario {
+            // service + provider in a single commonMain file
+            commonMain(
+                """
+                @Service interface S { fun greet(): String }
+                @Provides(S::class) object Impl : S { override fun greet() = "hello" }
+                """.trimIndent()
+            )
+            commonTest(
+                """
+                val ps = ServiceLoader.load<S>().toList()
+                assertEquals(1, ps.size)
+                assertEquals("hello", ps.single().value.greet())
+                """.trimIndent()
+            )
+        }
+    }
+
+    @Test
+    fun differentFilesSameSourceSet() = context(project) {
+        kmpExecutionScenario {
+            // two commonMain(...) calls -> two separate files in the same source set
+            commonMain("@Service interface S { fun greet(): String }")
+            commonMain("""@Provides(S::class) object Impl : S { override fun greet() = "hello" }""")
+            commonTest(
+                """
+                val ps = ServiceLoader.load<S>().toList()
+                assertEquals(1, ps.size)
+                assertEquals("hello", ps.single().value.greet())
+                """.trimIndent()
+            )
+        }
+    }
+
+    @Test
+    fun differentSourceSetsSameModule() = context(project) {
+        kmpExecutionScenario {
+            // service in commonMain, provider in the nonJvm intermediate of the SAME module
+            commonMain("@Service interface S { fun greet(): String }")
+            nonJvmMain("""@Provides(S::class) object Impl : S { override fun greet() = "hello" }""")
+            nonJvmTest(
                 """
                 val ps = ServiceLoader.load<S>().toList()
                 assertEquals(1, ps.size)
