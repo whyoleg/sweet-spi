@@ -77,7 +77,6 @@ class MultiModuleServiceTest : TestProjectBasedTest() {
     // KNOWN-FAILING (G8): same cross-module gap as testJvm — the jvm() target fails identically at
     // `:provider:compileKotlinJvm`. Encodes the KMP cross-module requirement; M1 removes this @Ignore.
     // See docs/superpowers/specs/2026-06-02-roadmap-design.md (M1 / G8).
-    @Ignore
     @Test
     fun testMultiplatform() = context(project) {
         bootstrapMultiModuleProject(listOf("service", "provider", "consumer"))

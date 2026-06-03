@@ -185,34 +185,13 @@ private class ServiceProviderGenerator private constructor(
     override fun lower(irClass: IrClass) {
         if (!irClass.hasAnnotation(SweetNames.Service)) return
 
-        // `$ServiceProvider` (and, below, `$ServiceProviderRegistry`) are now generated in FIR
-        // (SweetFirDeclarationGenerator) so they enter the consumable ABI; IR only fills bodies.
+        // `$ServiceProvider` and `$ServiceProviderRegistry` are now generated in FIR
+        // (SweetFirDeclarationGenerator) so they enter the consumable ABI. On klib, IR only adds the
+        // associated-object holder annotation on the service, pointing at the FIR-generated registry.
         if (pluginContext !is KlibSweetIrPluginContext) return
 
-        // klib only addition - registry
-
-        val registryClass = pluginContext.irFactory.buildClass {
-            origin = SweetOrigin
-            kind = ClassKind.OBJECT
-            modality = Modality.FINAL
-            visibility = DescriptorVisibilities.INTERNAL
-            name = SweetNames.ServiceProviderRegistryName
-        }.apply {
-            irClass.addChild(this)
-            createThisReceiverParameter()
-
-            annotateWith(pluginContext.publishedApiClass)
-            superTypes += pluginContext.serviceProviderRegistryClass.typeWith(irClass.defaultType)
-        }
-
-        registryClass.addConstructor {
-            origin = SweetOrigin
-            isPrimary = true
-        }.apply {
-            body = DeclarationIrBuilder(pluginContext, symbol).irBlockBody {
-                +irDelegatingConstructorCall(pluginContext.serviceProviderRegistryConstructor.owner)
-            }
-        }
+        val registryClass = irClass.findDeclaration<IrClass> { it.name == SweetNames.ServiceProviderRegistryName }
+            ?: error("FIR-generated ${SweetNames.ServiceProviderRegistryName} not found for service ${irClass.name}")
 
         irClass.annotateWith(pluginContext.serviceProviderRegistryHolderClass) {
             arguments[0] = IrClassReferenceImpl(
