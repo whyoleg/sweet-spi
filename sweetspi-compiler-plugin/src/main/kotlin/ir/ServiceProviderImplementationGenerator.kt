@@ -73,19 +73,28 @@ internal class ServiceProviderImplementationGenerator private constructor(
             val providerClassId = providerClassSymbol.owner.classIdOrFail
             val providerType = providerClassSymbol.defaultType
 
-            val providerImplClass = buildServiceProviderImpl(declaration, serviceClassId, serviceType, providerType)
-
-            currentFileAdditionalDeclarations.add(providerImplClass)
-
             when (pluginContext) {
-                is JvmSweetIrPluginContext  -> {
-                    // TODO: what about JVM with different enum flags in `@Service`?
-                    // needed only to generate resources
-                    generatedProviderImplementations.getOrPut(providerClassId, ::mutableSetOf).add(providerImplClass.classIdOrFail)
+                is JvmSweetIrPluginContext  -> when (serviceClassSymbol.owner.jvmCompatMode()) {
+                    // NO and PROVIDE generate identically: the wrapper impl listed under X$ServiceProvider.
+                    // (PROVIDE differs only at runtime, which also scans X for Java-authored providers.)
+                    JvmCompatMode.NO_COMPATIBILITY,
+                    JvmCompatMode.PROVIDE_COMPATIBILITY -> {
+                        val providerImplClass = buildServiceProviderImpl(declaration, serviceClassId, serviceType, providerType)
+                        currentFileAdditionalDeclarations.add(providerImplClass)
+                        generatedProviderImplementations.getOrPut(providerClassId, ::mutableSetOf).add(providerImplClass.classIdOrFail)
+                    }
+                    // FULL: no wrapper; list the user class directly under X. FIR guarantees a non-object class.
+                    JvmCompatMode.FULL_COMPATIBILITY    -> {
+                        val implClass = declaration as? IrClass
+                            ?: error("internal: FULL_COMPATIBILITY requires a class (guaranteed by FIR PROVIDES_FULL_COMPATIBILITY_REQUIRES_CLASS)")
+                        ensurePublicNoArgConstructor(implClass)
+                        generatedProviderImplementations.getOrPut(serviceClassId, ::mutableSetOf).add(implClass.classIdOrFail)
+                    }
                 }
                 is KlibSweetIrPluginContext -> {
-
-                    // klib only addition - registration
+                    // klib is mode-agnostic: always the wrapper + @EagerInitialization registration.
+                    val providerImplClass = buildServiceProviderImpl(declaration, serviceClassId, serviceType, providerType)
+                    currentFileAdditionalDeclarations.add(providerImplClass)
 
                     val registryClassSymbol =
                         serviceClassSymbol.owner.findDeclaration<IrClass> { it.name == SweetNames.ServiceProviderRegistryName }?.symbol
@@ -269,6 +278,21 @@ internal class ServiceProviderImplementationGenerator private constructor(
                 }
             }
         }
+    }
+
+    // Reads @Service(javaServiceLoaderCompatibilityMode) off the service class; absent → NO_COMPATIBILITY.
+    private fun IrClass.jvmCompatMode(): JvmCompatMode {
+        val entryName = getAnnotation(SweetNames.Service.asSingleFqName())
+            ?.let { it.arguments.getOrNull(0) as? IrGetEnumValue }
+            ?.symbol?.owner?.name?.asString()
+        return JvmCompatMode.fromEntryName(entryName)
+    }
+
+    private fun ensurePublicNoArgConstructor(implClass: IrClass) {
+        val hasNoArg = implClass.constructors.any { ctor ->
+            ctor.visibility == DescriptorVisibilities.PUBLIC && ctor.regularParameters.isEmpty()
+        }
+        require(hasNoArg) { "internal: no-arg constructor synthesis added in Task 6" }
     }
 
     /**
