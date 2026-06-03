@@ -288,11 +288,29 @@ internal class ServiceProviderImplementationGenerator private constructor(
         return JvmCompatMode.fromEntryName(entryName)
     }
 
+    // FULL_COMPATIBILITY needs a public no-arg constructor so java.util.ServiceLoader can instantiate the
+    // class. If the class already has one, do nothing. Otherwise (an all-default-param constructor — the
+    // only other case the FIR @Provides checker allows) synthesize `constructor(): this()` delegating to
+    // it; the JVM backend fills the defaults. JVM-FULL only — klib never reaches here.
     private fun ensurePublicNoArgConstructor(implClass: IrClass) {
         val hasNoArg = implClass.constructors.any { ctor ->
             ctor.visibility == DescriptorVisibilities.PUBLIC && ctor.regularParameters.isEmpty()
         }
-        require(hasNoArg) { "internal: no-arg constructor synthesis added in Task 6" }
+        if (hasNoArg) return
+
+        val defaultsCtor = implClass.constructors.first { ctor ->
+            ctor.regularParameters.isNotEmpty() && ctor.regularParameters.all { it.defaultValue != null }
+        }
+        implClass.addConstructor {
+            origin = SweetOrigin
+            isPrimary = false
+            visibility = DescriptorVisibilities.PUBLIC
+            returnType = implClass.defaultType
+        }.apply {
+            body = DeclarationIrBuilder(pluginContext, symbol).irBlockBody {
+                +irDelegatingConstructorCall(defaultsCtor)
+            }
+        }
     }
 
     /**

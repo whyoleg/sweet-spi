@@ -33,4 +33,28 @@ class CompatModeTest : TestProjectBasedTest() {
         assertServicesFile(serviceId = "sweettests.S", entries = setOf("sweettests.Impl"))
         assertNoServicesFile(serviceId = "sweettests.S\$\$ServiceProvider")
     }
+
+    @Test
+    fun fullCompatibility_allDefaultParamConstructor_isLoadableViaPlainJsl() = context(project) {
+        jvmExecutionScenario {
+            main(
+                $$"""
+                @Service(JavaServiceLoaderCompatibilityMode.FULL_COMPATIBILITY)
+                interface S { fun id(): String }
+                @Provides(S::class) class Impl(val tag: String = "default") : S {
+                    override fun id() = "Impl($tag)"
+                }
+                """.trimIndent()
+            )
+            // load via STOCK java.util.ServiceLoader — requires a public no-arg constructor on Impl
+            test(
+                """
+                val loaded = java.util.ServiceLoader.load(S::class.java).toList()
+                assertEquals(1, loaded.size)
+                assertEquals("Impl(default)", loaded.single().id())
+                """.trimIndent()
+            )
+        }
+        assertServicesFile(serviceId = "sweettests.S", entries = setOf("sweettests.Impl"))
+    }
 }
