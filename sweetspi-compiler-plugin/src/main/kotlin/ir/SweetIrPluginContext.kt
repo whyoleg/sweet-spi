@@ -20,8 +20,6 @@ val SweetOrigin: IrDeclarationOrigin = IrDeclarationOriginImpl("SWEET_SPI", isSy
 
 sealed class SweetIrPluginContext(context: IrPluginContext) : IrPluginContext by context {
     val anyConstructor = irBuiltIns.anyClass.owner.constructors.single()
-    val publishedApiClass = finderForBuiltins().findClass(StandardClassIds.Annotations.PublishedApi)!!
-    val serviceProviderClass = finderForBuiltins().findClass(SweetNames.ServiceProvider)!!
 
     // lazy
     val lazyFunctionSymbol = finderForBuiltins().findFunctions(
@@ -40,8 +38,6 @@ class JvmSweetIrPluginContext(context: IrPluginContext) : SweetIrPluginContext(c
 
 class KlibSweetIrPluginContext(context: IrPluginContext) : SweetIrPluginContext(context) {
     val serviceProviderRegistryHolderClass = finderForBuiltins().findClass(SweetNames.ServiceProviderRegistryHolder)!!
-    val serviceProviderRegistryClass = finderForBuiltins().findClass(SweetNames.ServiceProviderRegistry)!!
-    val serviceProviderRegistryConstructor = finderForBuiltins().findConstructors(SweetNames.ServiceProviderRegistry).single()
     val serviceProviderRegistryRegister = finderForBuiltins().findFunctions(
         CallableId(SweetNames.ServiceProviderRegistry, Name.identifier("register"))
     ).single()
