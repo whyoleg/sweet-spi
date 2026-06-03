@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.fir.extensions.*
 class SweetFirExtensionRegistrar : FirExtensionRegistrar() {
     override fun ExtensionRegistrarContext.configurePlugin() {
         +::SweetFirCheckers
+        +::SweetFirDeclarationGenerator
     }
 }
 

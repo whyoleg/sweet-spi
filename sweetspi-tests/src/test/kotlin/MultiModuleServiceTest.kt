@@ -18,7 +18,6 @@ class MultiModuleServiceTest : TestProjectBasedTest() {
     // (`Provider class not found for service type`). This test encodes the requirement; M1 fixes it by
     // generating `$ServiceProvider` in FIR, then removes this @Ignore. See
     // docs/superpowers/specs/2026-06-02-roadmap-design.md (M1 / G8).
-    @Ignore
     @Test
     fun testJvm() = context(project) {
         bootstrapMultiModuleProject(listOf("service", "provider", "consumer"))

@@ -185,20 +185,8 @@ private class ServiceProviderGenerator private constructor(
     override fun lower(irClass: IrClass) {
         if (!irClass.hasAnnotation(SweetNames.Service)) return
 
-        pluginContext.irFactory.buildClass {
-            origin = SweetOrigin
-            kind = ClassKind.INTERFACE
-            modality = Modality.ABSTRACT
-            visibility = DescriptorVisibilities.INTERNAL
-            name = SweetNames.ServiceProviderName
-        }.apply {
-            irClass.addChild(this)
-            createThisReceiverParameter()
-
-            annotateWith(pluginContext.publishedApiClass)
-            superTypes += pluginContext.serviceProviderClass.typeWith(irClass.defaultType)
-        }
-
+        // `$ServiceProvider` (and, below, `$ServiceProviderRegistry`) are now generated in FIR
+        // (SweetFirDeclarationGenerator) so they enter the consumable ABI; IR only fills bodies.
         if (pluginContext !is KlibSweetIrPluginContext) return
 
         // klib only addition - registry
