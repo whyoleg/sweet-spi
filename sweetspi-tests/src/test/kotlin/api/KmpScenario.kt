@@ -32,6 +32,7 @@ internal enum class KmpTarget(val targetName: String, val testTask: String?) {
 private val ALL_TARGETS = KmpTarget.entries.toSet()
 private val NON_JVM = setOf(KmpTarget.MacosArm64, KmpTarget.LinuxX64, KmpTarget.WasmJs, KmpTarget.WasmWasi)
 private val JVM_AND_NATIVE = setOf(KmpTarget.Jvm, KmpTarget.MacosArm64, KmpTarget.LinuxX64)
+private val JVM_ONLY = setOf(KmpTarget.Jvm)
 
 // ----------------------------------- checker scenario -----------------------------------
 
@@ -96,6 +97,9 @@ class KmpModuleScope internal constructor(internal val name: String) {
     fun nonJvmTest(@Language("kotlin") body: String) = test("nonJvmTest", NON_JVM, body)
     fun jvmAndNativeTest(@Language("kotlin") body: String) = test("jvmAndNativeTest", JVM_AND_NATIVE, body)
 
+    // jvm-only test source set — runs on the Jvm target only (e.g. plain java.util.ServiceLoader checks)
+    fun jvmTest(@Language("kotlin") body: String) = test("jvmTest", JVM_ONLY, body)
+
     private fun main(sourceSet: String, code: String) {
         files += SourceFile(sourceSet, "Source${counter++}.kt", "import dev.whyoleg.sweetspi.*\n\n$code")
     }
@@ -133,6 +137,7 @@ class KmpProjectScope internal constructor() {
     fun commonTest(@Language("kotlin") body: String) = root.commonTest(body)
     fun nonJvmTest(@Language("kotlin") body: String) = root.nonJvmTest(body)
     fun jvmAndNativeTest(@Language("kotlin") body: String) = root.jvmAndNativeTest(body)
+    fun jvmTest(@Language("kotlin") body: String) = root.jvmTest(body)
 
     // a named module depending on other modules by path (e.g. ":service"); `api` only for now, so a
     // consumer transitively sees a service exposed by a provider it depends on.
